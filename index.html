@@ -24,6 +24,7 @@
       <p class="text-lg opacity-90">Split bills. Pay in USDC. Settle instantly.</p>
     </div>
 
+    <!-- CONNECT WALLET -->
     <div id="connectCard" class="glass p-6 text-center mb-6">
       <button id="connectBtn" class="gradient-btn text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg">
         Connect Wallet
@@ -32,14 +33,16 @@
       <p id="error" class="mt-2 text-red-300 text-xs"></p>
     </div>
 
+    <!-- TRIP INFO -->
     <div id="tripCard" class="glass p-6 mb-6" style="display:none;">
       <h2 class="text-2xl font-bold mb-4 flex items-center">
         <span class="mr-2">Trip</span>
         <span id="creatorBadge" class="text-xs bg-green-500 text-white px-2 py-1 rounded-full" style="display:none;">Creator</span>
       </h2>
-      <p class="text-sm opacity-80">Contract: <span id="contractAddr" class="font-mono text-xs"></span></p>
+      <p class="text-sm opacity-80">Contract: <span id="contractAddr" class="font-mono text-xs">0xdfA5b290...</span></p>
     </div>
 
+    <!-- ADD EXPENSE -->
     <div id="expenseCard" class="glass p-6 mb-6" style="display:none;">
       <h3 class="text-xl font-bold mb-4">Add Expense</h3>
       <input id="amount" type="number" step="0.01" placeholder="45.00" class="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-white/60 mb-3">
@@ -52,17 +55,20 @@
       </button>
     </div>
 
+    <!-- BALANCES -->
     <div id="balancesCard" class="glass p-6 mb-6" style="display:none;">
       <h3 class="text-xl font-bold mb-4">Your Balances</h3>
       <div id="balances" class="space-y-3"></div>
     </div>
 
+    <!-- FINALIZE -->
     <div id="finalizeCard" class="glass p-6 mb-6" style="display:none;">
       <button id="finalizeBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">
         End Trip (Creator Only)
       </button>
     </div>
 
+    <!-- FINAL SUMMARY -->
     <div id="summaryCard" class="glass p-6" style="display:none;">
       <h3 class="text-xl font-bold mb-4">Final Summary</h3>
       <div id="summary" class="space-y-3"></div>
@@ -74,91 +80,9 @@
   </div>
 
   <script>
-    const CONTRACT_ADDR = "0x56F7f5e5A69b7Bae270355A731fD7DAcE8B09aDB";
+    const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
 
     const ABI = [
-      {
-        "inputs": [
-          { "internalType": "address", "name": "usdcAddress", "type": "address" }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-      },
-      {
-        "inputs": [
-          { "internalType": "uint256", "name": "amount", "type": "uint256" },
-          { "internalType": "address", "name": "payer", "type": "address" },
-          { "internalType": "address[]", "name": "participants", "type": "address[]" }
-        ],
-        "name": "addExpense",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "creator",
-        "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "finalizeTrip",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "finalized",
-        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "getFinalSummary",
-        "outputs": [
-          { "internalType": "address[]", "name": "who", "type": "address[]" },
-          { "internalType": "int256[]", "name": "netAmount", "type": "int256[]" }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "getMyBalances",
-        "outputs": [
-          { "internalType": "address[]", "name": "", "type": "address[]" },
-          { "internalType": "int256[]", "name": "", "type": "int256[]" }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "members",
-        "outputs": [{ "internalType": "address[]", "name": "", "type": "address[]" }],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          { "internalType": "address", "name": "creditor", "type": "address" }
-        ],
-        "name": "settle",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "withdrawPot",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
       {
         "anonymous": false,
         "inputs": [
@@ -167,6 +91,23 @@
           { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" }
         ],
         "name": "ExpenseAdded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "address", "name": "member", "type": "address" }
+        ],
+        "name": "MemberAdded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+          { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "PotWithdrawn",
         "type": "event"
       },
       {
@@ -186,11 +127,286 @@
         ],
         "name": "TripFinalized",
         "type": "event"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "address", "name": "payer", "type": "address" },
+          { "internalType": "address[]", "name": "participants", "type": "address[]" }
+        ],
+        "name": "addExpense",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "finalizeTrip",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "creditor", "type": "address" }
+        ],
+        "name": "settle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "stateMutability": "payable",
+        "type": "receive"
+      },
+      {
+        "inputs": [],
+        "name": "withdrawPot",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "usdcAddress", "type": "address" }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "creator",
+        "outputs": [
+          { "internalType": "address", "name": "", "type": "address" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "finalized",
+        "outputs": [
+          { "internalType": "bool", "name": "", "type": "bool" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getFinalSummary",
+        "outputs": [
+          { "internalType": "address[]", "name": "who", "type": "address[]" },
+          { "internalType": "int256[]", "name": "netAmount", "type": "int256[]" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getMyBalances",
+        "outputs": [
+          { "internalType": "address[]", "name": "creditors", "type": "address[]" },
+          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_MEMBERS",
+        "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "members",
+        "outputs": [
+          { "internalType": "address[]", "name": "", "type": "address[]" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "USDC",
+        "outputs": [
+          { "internalType": "contract IERC20", "name": "", "type": "address" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
       }
     ];
 
-    // ... rest of your JS (same as before)
-    // Paste the full JS from previous message
+    let provider, signer, contract, account, isCreator = false;
+    const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
+
+    async function connect() {
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+
+      if (!window.ethereum) {
+        errorEl.textContent = "Install MetaMask!";
+        return;
+      }
+
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 8453) {
+          errorEl.textContent = "Switch to Base Mainnet";
+          return;
+        }
+
+        signer = provider.getSigner();
+        account = await signer.getAddress();
+        contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
+
+        document.getElementById("wallet").innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
+        document.getElementById("contractAddr").textContent = CONTRACT_ADDR;
+        document.getElementById("connectCard").style.display = "none";
+
+        const creator = await contract.creator();
+        isCreator = creator.toLowerCase() === account.toLowerCase();
+        if (isCreator) document.getElementById("creatorBadge").style.display = "inline";
+
+        showSection("tripCard");
+        loadFriends();
+        loadBalances();
+        checkFinalized();
+      } catch (err) {
+        errorEl.textContent = err.message || "Connection failed";
+      }
+    }
+
+    function showSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "block";
+    }
+
+    function loadFriends() {
+      const list = document.getElementById("friendsList");
+      list.innerHTML = Object.keys(friends).map(name => {
+        const addr = friends[name];
+        return `<label class="flex items-center bg-white/10 px-3 py-2 rounded-lg cursor-pointer">
+          <input type="checkbox" value="${addr}" class="mr-2">
+          <span class="text-sm">${name}</span>
+        </label>`;
+      }).join('');
+      if (Object.keys(friends).length < 10) {
+        list.innerHTML += `<button onclick="addFriend()" class="bg-white/20 px-3 py-2 rounded-lg text-sm">+</button>`;
+      }
+    }
+
+    window.addFriend = () => {
+      const name = prompt("Name:");
+      const addr = prompt("Address:");
+      if (name && ethers.utils.isAddress(addr)) {
+        friends[name] = addr;
+        localStorage.setItem("settleup_friends", JSON.stringify(friends));
+        loadFriends();
+      }
+    };
+
+    document.getElementById("addExpenseBtn").onclick = async () => {
+      const amount = document.getElementById("amount").value;
+      const selected = Array.from(document.querySelectorAll("#friendsList input:checked")).map(cb => cb.value);
+      if (!amount || selected.length === 0) return alert("Fill all!");
+      try {
+        const tx = await contract.addExpense(ethers.utils.parseUnits(amount, 6), account, selected);
+        await tx.wait();
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        document.getElementById("amount").value = "";
+        loadBalances();
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    };
+
+    async function loadBalances() {
+      try {
+        const [creditors, amounts] = await contract.getMyBalances();
+        const div = document.getElementById("balances");
+        div.innerHTML = creditors.map((a, i) => {
+          const amt = ethers.utils.formatUnits(amounts[i].abs(), 6);
+          const sign = amounts[i].gt(0) ? "owe" : "owed by";
+          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+            <span class="font-mono text-sm">${a.slice(0,6)}...</span>
+            <span class="${amounts[i].gt(0) ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${sign}</span>
+          </div>`;
+        }).join('');
+        showSection("balancesCard");
+      } catch (e) {
+        console.log("No balances yet");
+      }
+    }
+
+    async function checkFinalized() {
+      try {
+        const finalized = await contract.finalized();
+        if (finalized) {
+          document.getElementById("expenseCard").style.display = "none";
+          document.getElementById("finalizeCard").style.display = "none";
+          loadSummary();
+        } else {
+          showSection("expenseCard");
+          if (isCreator) {
+            showSection("finalizeCard");
+            document.getElementById("finalizeBtn").onclick = async () => {
+              try {
+                const tx = await contract.finalizeTrip();
+                await tx.wait();
+                confetti();
+                loadSummary();
+              } catch (e) {
+                alert("Finalize failed: " + e.message);
+              }
+            };
+          }
+        }
+      } catch (e) {
+        console.log("Not connected yet");
+      }
+    }
+
+    async function loadSummary() {
+      try {
+        const [who, net] = await contract.getFinalSummary();
+        const div = document.getElementById("summary");
+        div.innerHTML = who.map((w, i) => {
+          const amt = ethers.utils.formatUnits(net[i].abs(), 6);
+          const sign = net[i].gt(0) ? "Pay" : "Receive";
+          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+            <span class="font-mono text-sm">${w.slice(0,6)}...</span>
+            <span class="${net[i].gt(0) ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${sign}</span>
+          </div>`;
+        }).join('');
+        showSection("summaryCard");
+
+        document.getElementById("settleAllBtn").onclick = async () => {
+          try {
+            const [creditors, amounts] = await contract.getMyBalances();
+            for (let i = 0; i < amounts.length; i++) {
+              if (amounts[i].gt(0)) {
+                const tx = await contract.settle(creditors[i]);
+                await tx.wait();
+              }
+            }
+            confetti({ particleCount: 200, spread: 100 });
+            alert("All settled!");
+          } catch (e) {
+            alert("Settle failed: " + e.message);
+          }
+        };
+      } catch (e) {
+        alert("Summary error: " + e.message);
+      }
+    }
+
+    document.getElementById("connectBtn").onclick = connect;
   </script>
 </body>
 </html>
