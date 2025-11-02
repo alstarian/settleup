@@ -74,17 +74,30 @@
   <script>
     const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
 
-    const ABI = [ /* YOUR ABI */ ];
+    const ABI = [ /* YOUR FULL ABI */ ];
 
     let provider, signer, contract, account, isCreator = false;
     const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
 
+    // DEFINE settleDebt FIRST
+    window.settleDebt = async (creditor) => {
+      if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
+      try {
+        const tx = await contract.settle(creditor);
+        await tx.wait();
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        loadBalances(); // Refresh
+      } catch (e) {
+        alert("Payment failed: " + e.message);
+      }
+    };
+
     async function connect() {
       const errorEl = document.getElementById("error");
-      errorEl.textContent = "";
+      if (errorEl) errorEl.textContent = "";
 
       if (!window.ethereum) {
-        errorEl.textContent = "Install MetaMask!";
+        if (errorEl) errorEl.textContent = "Install MetaMask!";
         return;
       }
 
@@ -93,7 +106,7 @@
         await provider.send("eth_requestAccounts", []);
         const network = await provider.getNetwork();
         if (network.chainId !== 8453) {
-          errorEl.textContent = "Please switch to Base Mainnet.";
+          if (errorEl) errorEl.textContent = "Switch to Base Mainnet";
           return;
         }
 
@@ -101,20 +114,25 @@
         account = await signer.getAddress();
         contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
-        document.getElementById("wallet").innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
-        document.getElementById("contractAddr").textContent = CONTRACT_ADDR;
-        document.getElementById("connectCard").style.display = "none";
+        const walletEl = document.getElementById("wallet");
+        const addrEl = document.getElementById("contractAddr");
+        const connectCard = document.getElementById("connectCard");
+
+        if (walletEl) walletEl.innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
+        if (addrEl) addrEl.textContent = CONTRACT_ADDR;
+        if (connectCard) connectCard.style.display = "none";
 
         const creator = await contract.creator();
         isCreator = creator.toLowerCase() === account.toLowerCase();
-        if (isCreator) document.getElementById("creatorBadge").style.display = "inline";
+        const badge = document.getElementById("creatorBadge");
+        if (badge && isCreator) badge.style.display = "inline";
 
         showSection("tripCard");
         loadFriends();
         loadBalances();
         checkFinalized();
       } catch (err) {
-        errorEl.textContent = err.message || "Connection failed";
+        if (errorEl) errorEl.textContent = err.message || "Connection failed";
       }
     }
 
@@ -125,6 +143,7 @@
 
     function loadFriends() {
       const list = document.getElementById("friendsList");
+      if (!list) return;
       list.innerHTML = Object.keys(friends).map(name => {
         const addr = friends[name];
         return `<label class="flex items-center bg-white/10 px-3 py-2 rounded-lg cursor-pointer">
@@ -150,7 +169,7 @@
     document.getElementById("addExpenseBtn").onclick = async () => {
       const amount = document.getElementById("amount").value;
       const selected = Array.from(document.querySelectorAll("#friendsList input:checked")).map(cb => cb.value);
-      if (!amount || selected.length === 0) return alert("Please enter an amount and select at least one participant.");
+      if (!amount || selected.length === 0) return alert("Fill all!");
       try {
         const tx = await contract.addExpense(ethers.utils.parseUnits(amount, 6), account, selected);
         await tx.wait();
@@ -162,11 +181,13 @@
       }
     };
 
-    // FIXED: PAY BUTTONS
+    // FIXED: PAY BUTTONS + SAFE
     async function loadBalances() {
       try {
         const [creditors, amounts] = await contract.getMyBalances();
         const div = document.getElementById("balances");
+        if (!div) return;
+
         div.innerHTML = creditors.map((a, i) => {
           const amt = ethers.utils.formatUnits(Math.abs(amounts[i]), 6);
           const owe = amounts[i] > 0;
@@ -186,18 +207,6 @@
         console.log("No balances yet", e);
       }
     }
-
-    window.settleDebt = async (creditor) => {
-      if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
-      try {
-        const tx = await contract.settle(creditor);
-        await tx.wait();
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        loadBalances();
-      } catch (e) {
-        alert("Payment failed: " + e.message);
-      }
-    };
 
     async function checkFinalized() {
       try {
@@ -231,6 +240,7 @@
       try {
         const [who, net] = await contract.getFinalSummary();
         const div = document.getElementById("summary");
+        if (!div) return;
         div.innerHTML = who.map((w, i) => {
           const amt = ethers.utils.formatUnits(Math.abs(net[i]), 6);
           const pay = net[i] > 0;
