@@ -194,25 +194,33 @@
       }
     };
 
-    // PAY BUTTONS — SAFE & WORKING
+    // FIXED LOGIC: PAYER SEES "OWED TO YOU", OTHERS SEE "OWE"
     async function loadBalances() {
       try {
         const [creditors, amounts] = await contract.getMyBalances();
         const div = document.getElementById("balances");
         div.innerHTML = creditors.map((a, i) => {
-          const amt = ethers.utils.formatUnits(Math.abs(amounts[i]), 6);
-          const owe = amounts[i] > 0;
-          const btn = owe 
-            ? `<button onclick="settleDebt('${a}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>`
-            : '';
-          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-            <span class="font-mono text-sm">${a.slice(0,6)}...</span>
-            <div class="flex items-center">
-              <span class="${owe ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${owe ? 'owe' : 'owed by'}</span>
-              ${btn}
-            </div>
-          </div>`;
-        }).join('');
+          const rawAmount = amounts[i];
+          const absAmount = ethers.utils.formatUnits(rawAmount.abs(), 6);
+          const isOwedToYou = rawAmount.lt(0); // negative = you are owed
+          const isYouOwe = rawAmount.gt(0);    // positive = you owe
+
+          if (isYouOwe) {
+            return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+              <span class="font-mono text-sm">${a.slice(0,6)}...</span>
+              <div class="flex items-center">
+                <span class="text-red-400 font-bold">$${absAmount} owe</span>
+                <button onclick="settleDebt('${a}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>
+              </div>
+            </div>`;
+          } else if (isOwedToYou) {
+            return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+              <span class="font-mono text-sm">${a.slice(0,6)}...</span>
+              <span class="text-green-400 font-bold">$${absAmount} owed to you</span>
+            </div>`;
+          }
+          return '';
+        }).filter(x => x).join('');
         showSection("balancesCard");
       } catch (e) {
         console.log("No balances yet", e);
@@ -252,20 +260,31 @@
         const [who, net] = await contract.getFinalSummary();
         const div = document.getElementById("summary");
         div.innerHTML = who.map((w, i) => {
-          const amt = ethers.utils.formatUnits(Math.abs(net[i]), 6);
-          const pay = net[i] > 0;
-          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-            <span class="font-mono text-sm">${w.slice(0,6)}...</span>
-            <span class="${pay ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${pay ? 'Pay' : 'Receive'}</span>
-          </div>`;
-        }).join('');
+          const raw = net[i];
+          const abs = ethers.utils.formatUnits(raw.abs(), 6);
+          const positive = raw.gt(0); // pay
+          const negative = raw.lt(0); // receive
+
+          if (positive) {
+            return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+              <span class="font-mono text-sm">${w.slice(0,6)}...</span>
+              <span class="text-red-400 font-bold">$${abs} Pay</span>
+            </div>`;
+          } else if (negative) {
+            return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+              <span class="font-mono text-sm">${w.slice(0,6)}...</span>
+              <span class="text-green-400 font-bold">$${abs} Receive</span>
+            </div>`;
+          }
+          return '';
+        }).filter(x => x).join('');
         showSection("summaryCard");
 
         document.getElementById("settleAllBtn").onclick = async () => {
           try {
             const [creditors, amounts] = await contract.getMyBalances();
             for (let i = 0; i < amounts.length; i++) {
-              if (amounts[i] > 0) {
+              if (amounts[i].gt(0)) {
                 const tx = await contract.settle(creditors[i]);
                 await tx.wait();
               }
