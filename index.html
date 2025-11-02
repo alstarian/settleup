@@ -74,26 +74,7 @@
   <script>
     const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
 
-    const ABI = [
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"}],"name":"ExpenseAdded","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberAdded","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"PotWithdrawn","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Settled","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"finalizer","type":"address"}],"name":"TripFinalized","type":"event"},
-      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"finalizeTrip","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"creditor","type":"address"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"stateMutability":"payable","type":"receive"},
-      {"inputs":[],"name":"withdrawPot","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
-      {"inputs":[],"name":"creator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"finalized","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getFinalSummary","outputs":[{"internalType":"address[]","name":"who","type":"address[]"},{"internalType":"int256[]","name":"netAmount","type":"int256[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getMyBalances","outputs":[{"internalType":"address[]","name":"creditors","type":"address[]"},{"internalType":"int256[]","name":"amounts","type":"int256[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"MAX_MEMBERS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"members","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"USDC","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"}
-    ];
+    const ABI = [ /* YOUR ABI */ ];
 
     let provider, signer, contract, account, isCreator = false;
     const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
@@ -181,6 +162,7 @@
       }
     };
 
+    // FIXED: PAY BUTTONS
     async function loadBalances() {
       try {
         const [creditors, amounts] = await contract.getMyBalances();
@@ -188,9 +170,15 @@
         div.innerHTML = creditors.map((a, i) => {
           const amt = ethers.utils.formatUnits(Math.abs(amounts[i]), 6);
           const owe = amounts[i] > 0;
+          const btn = owe 
+            ? `<button onclick="settleDebt('${a}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>`
+            : '';
           return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
             <span class="font-mono text-sm">${a.slice(0,6)}...</span>
-            <span class="${owe ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${owe ? 'owe' : 'owed by'}</span>
+            <div class="flex items-center">
+              <span class="${owe ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${owe ? 'owe' : 'owed by'}</span>
+              ${btn}
+            </div>
           </div>`;
         }).join('');
         showSection("balancesCard");
@@ -198,6 +186,18 @@
         console.log("No balances yet", e);
       }
     }
+
+    window.settleDebt = async (creditor) => {
+      if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
+      try {
+        const tx = await contract.settle(creditor);
+        await tx.wait();
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        loadBalances();
+      } catch (e) {
+        alert("Payment failed: " + e.message);
+      }
+    };
 
     async function checkFinalized() {
       try {
