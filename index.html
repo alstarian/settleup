@@ -74,19 +74,38 @@
   <script>
     const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
 
-    const ABI = [ /* YOUR FULL ABI */ ];
+    const ABI = [
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"}],"name":"ExpenseAdded","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberAdded","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"PotWithdrawn","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Settled","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"finalizer","type":"address"}],"name":"TripFinalized","type":"event"},
+      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"finalizeTrip","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"creditor","type":"address"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"stateMutability":"payable","type":"receive"},
+      {"inputs":[],"name":"withdrawPot","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+      {"inputs":[],"name":"creator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"finalized","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getFinalSummary","outputs":[{"internalType":"address[]","name":"who","type":"address[]"},{"internalType":"int256[]","name":"netAmount","type":"int256[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getMyBalances","outputs":[{"internalType":"address[]","name":"creditors","type":"address[]"},{"internalType":"int256[]","name":"amounts","type":"int256[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"MAX_MEMBERS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"members","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"USDC","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"}
+    ];
 
     let provider, signer, contract, account, isCreator = false;
     const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
 
-    // DEFINE settleDebt FIRST
+    // PAY FUNCTION — DEFINED FIRST
     window.settleDebt = async (creditor) => {
       if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
       try {
         const tx = await contract.settle(creditor);
         await tx.wait();
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        loadBalances(); // Refresh
+        loadBalances();
       } catch (e) {
         alert("Payment failed: " + e.message);
       }
@@ -94,10 +113,10 @@
 
     async function connect() {
       const errorEl = document.getElementById("error");
-      if (errorEl) errorEl.textContent = "";
+      errorEl.textContent = "";
 
       if (!window.ethereum) {
-        if (errorEl) errorEl.textContent = "Install MetaMask!";
+        errorEl.textContent = "Install MetaMask!";
         return;
       }
 
@@ -106,7 +125,7 @@
         await provider.send("eth_requestAccounts", []);
         const network = await provider.getNetwork();
         if (network.chainId !== 8453) {
-          if (errorEl) errorEl.textContent = "Switch to Base Mainnet";
+          errorEl.textContent = "Please switch to Base Mainnet.";
           return;
         }
 
@@ -114,25 +133,20 @@
         account = await signer.getAddress();
         contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
-        const walletEl = document.getElementById("wallet");
-        const addrEl = document.getElementById("contractAddr");
-        const connectCard = document.getElementById("connectCard");
-
-        if (walletEl) walletEl.innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
-        if (addrEl) addrEl.textContent = CONTRACT_ADDR;
-        if (connectCard) connectCard.style.display = "none";
+        document.getElementById("wallet").innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
+        document.getElementById("contractAddr").textContent = CONTRACT_ADDR;
+        document.getElementById("connectCard").style.display = "none";
 
         const creator = await contract.creator();
         isCreator = creator.toLowerCase() === account.toLowerCase();
-        const badge = document.getElementById("creatorBadge");
-        if (badge && isCreator) badge.style.display = "inline";
+        if (isCreator) document.getElementById("creatorBadge").style.display = "inline";
 
         showSection("tripCard");
         loadFriends();
         loadBalances();
         checkFinalized();
       } catch (err) {
-        if (errorEl) errorEl.textContent = err.message || "Connection failed";
+        errorEl.textContent = err.message || "Connection failed";
       }
     }
 
@@ -143,7 +157,6 @@
 
     function loadFriends() {
       const list = document.getElementById("friendsList");
-      if (!list) return;
       list.innerHTML = Object.keys(friends).map(name => {
         const addr = friends[name];
         return `<label class="flex items-center bg-white/10 px-3 py-2 rounded-lg cursor-pointer">
@@ -169,7 +182,7 @@
     document.getElementById("addExpenseBtn").onclick = async () => {
       const amount = document.getElementById("amount").value;
       const selected = Array.from(document.querySelectorAll("#friendsList input:checked")).map(cb => cb.value);
-      if (!amount || selected.length === 0) return alert("Fill all!");
+      if (!amount || selected.length === 0) return alert("Please enter an amount and select at least one participant.");
       try {
         const tx = await contract.addExpense(ethers.utils.parseUnits(amount, 6), account, selected);
         await tx.wait();
@@ -181,13 +194,11 @@
       }
     };
 
-    // FIXED: PAY BUTTONS + SAFE
+    // PAY BUTTONS — SAFE & WORKING
     async function loadBalances() {
       try {
         const [creditors, amounts] = await contract.getMyBalances();
         const div = document.getElementById("balances");
-        if (!div) return;
-
         div.innerHTML = creditors.map((a, i) => {
           const amt = ethers.utils.formatUnits(Math.abs(amounts[i]), 6);
           const owe = amounts[i] > 0;
@@ -240,7 +251,6 @@
       try {
         const [who, net] = await contract.getFinalSummary();
         const div = document.getElementById("summary");
-        if (!div) return;
         div.innerHTML = who.map((w, i) => {
           const amt = ethers.utils.formatUnits(Math.abs(net[i]), 6);
           const pay = net[i] > 0;
