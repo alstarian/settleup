@@ -79,6 +79,7 @@
     let provider, signer, contract, account, isCreator = false;
     const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
 
+    // PAY FUNCTION
     window.settleDebt = async (creditor) => {
       if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
       try {
@@ -122,10 +123,9 @@
         if (isCreator) document.getElementById("creatorBadge").style.display = "inline";
 
         showSection("tripCard");
-        showSection("expenseCard");
-        if (isCreator) showSection("finalizeCard");
         loadFriends();
         loadBalances();
+        checkFinalized();
       } catch (err) {
         errorEl.textContent = err.message || "Connection failed";
       }
@@ -175,54 +175,90 @@
       }
     };
 
-    // FIXED: READ ALL MEMBERS AND SHOW BOTH DIRECTIONS
+    // FIXED: PAY BUTTONS FOR OWE
     async function loadBalances() {
       try {
-        const members = await contract.members();
+        const [creditors, amounts] = await contract.getMyBalances();
         const div = document.getElementById("balances");
-        div.innerHTML = '';
-
-        for (let i = 0; i < members.length; i++) {
-          const member = members[i];
-          if (member.toLowerCase() === account.toLowerCase()) continue;
-
-          const bal = await contract.balanceOf(member);
-          if (bal.eq(0)) continue;
-
-          const abs = ethers.utils.formatUnits(bal.abs(), 6);
-          const addr = member;
-
-          if (bal.gt(0)) {
-            // Friend owes you
-            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
-              <span class="text-green-400 font-bold">$${abs} owed to you</span>
-            </div>`;
-          } else if (bal.lt(0)) {
-            // You owe friend
-            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
-              <div class="flex items-center">
-                <span class="text-red-400 font-bold">$${abs} owe</span>
-                <button onclick="settleDebt('${addr}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>
-              </div>
-            </div>`;
-          }
-        }
-
-        // Also check if YOU are owed (your balance is negative)
-        const myBal = await contract.balanceOf(account);
-        if (myBal.lt(0)) {
-          const abs = ethers.utils.formatUnits(myBal.abs(), 6);
-          div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-            <span class="font-mono text-sm">Total</span>
-            <span class="text-green-400 font-bold">$${abs} owed to you</span>
+        div.innerHTML = creditors.map((a, i) => {
+          const amt = ethers.utils.formatUnits(amounts[i].abs(), 6);
+          const owe = amounts[i].gt(0); // Positive = you owe
+          const label = owe ? "owe" : "owed by";
+          const color = owe ? "text-red-400" : "text-green-400";
+          const btn = owe ? `<button onclick="settleDebt('${a}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>` : '';
+          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+            <span class="font-mono text-sm">${a.slice(0,6)}...</span>
+            <div class="flex items-center">
+              <span class="${color} font-bold">$${amt} ${label}</span>
+              ${btn}
+            </div>
           </div>`;
-        }
-
+        }).join('');
         showSection("balancesCard");
       } catch (e) {
-        console.log("Error loading balances", e);
+        console.log("No balances yet", e);
+      }
+    }
+
+    async function checkFinalized() {
+      try {
+        const finalized = await contract.finalized();
+        if (finalized) {
+          document.getElementById("expenseCard").style.display = "none";
+          document.getElementById("finalizeCard").style.display = "none";
+          loadSummary();
+        } else {
+          showSection("expenseCard");
+          if (isCreator) {
+            showSection("finalizeCard");
+            document.getElementById("finalizeBtn").onclick = async () => {
+              try {
+                const tx = await contract.finalizeTrip();
+                await tx.wait();
+                confetti();
+                loadSummary();
+              } catch (e) {
+                alert("Finalize failed: " + e.message);
+              }
+            };
+          }
+        }
+      } catch (e) {
+        console.log("Not connected yet");
+      }
+    }
+
+    async function loadSummary() {
+      try {
+        const [who, net] = await contract.getFinalSummary();
+        const div = document.getElementById("summary");
+        div.innerHTML = who.map((w, i) => {
+          const amt = ethers.utils.formatUnits(net[i].abs(), 6);
+          const pay = net[i].gt(0); // Positive = pay
+          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+            <span class="font-mono text-sm">${w.slice(0,6)}...</span>
+            <span class="${pay ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${pay ? 'Pay' : 'Receive'}</span>
+          </div>`;
+        }).join('');
+        showSection("summaryCard");
+
+        document.getElementById("settleAllBtn").onclick = async () => {
+          try {
+            const [creditors, amounts] = await contract.getMyBalances();
+            for (let i = 0; i < amounts.length; i++) {
+              if (amounts[i].gt(0)) {
+                const tx = await contract.settle(creditors[i]);
+                await tx.wait();
+              }
+            }
+            confetti({ particleCount: 200, spread: 100 });
+            alert("All settled!");
+          } catch (e) {
+            alert("Settle failed: " + e.message);
+          }
+        };
+      } catch (e) {
+        alert("Summary error: " + e.message);
       }
     }
 
