@@ -74,26 +74,7 @@
   <script>
     const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
 
-    const ABI = [
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"}],"name":"ExpenseAdded","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberAdded","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"PotWithdrawn","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Settled","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"finalizer","type":"address"}],"name":"TripFinalized","type":"event"},
-      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"finalizeTrip","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"creditor","type":"address"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"stateMutability":"payable","type":"receive"},
-      {"inputs":[],"name":"withdrawPot","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
-      {"inputs":[],"name":"creator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"finalized","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getFinalSummary","outputs":[{"internalType":"address[]","name":"who","type":"address[]"},{"internalType":"int256[]","name":"netAmount","type":"int256[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getMyBalances","outputs":[{"internalType":"address[]","name":"creditors","type":"address[]"},{"internalType":"int256[]","name":"amounts","type":"int256[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"MAX_MEMBERS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"members","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"USDC","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"}
-    ];
+    const ABI = [ /* YOUR ABI */ ];
 
     let provider, signer, contract, account, isCreator = false;
     const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
@@ -145,7 +126,6 @@
         if (isCreator) showSection("finalizeCard");
         loadFriends();
         loadBalances();
-        checkFinalized();
       } catch (err) {
         errorEl.textContent = err.message || "Connection failed";
       }
@@ -195,18 +175,31 @@
       }
     };
 
-    // FIXED: USE getMyBalances() DURING TRIP
+    // FIXED: READ ALL MEMBERS AND SHOW BOTH DIRECTIONS
     async function loadBalances() {
       try {
-        const [creditors, amounts] = await contract.getMyBalances();
+        const members = await contract.members();
         const div = document.getElementById("balances");
         div.innerHTML = '';
-        for (let i = 0; i < amounts.length; i++) {
-          const bal = amounts[i];
-          const addr = creditors[i];
+
+        for (let i = 0; i < members.length; i++) {
+          const member = members[i];
+          if (member.toLowerCase() === account.toLowerCase()) continue;
+
+          const bal = await contract.balanceOf(member);
+          if (bal.eq(0)) continue;
+
           const abs = ethers.utils.formatUnits(bal.abs(), 6);
+          const addr = member;
+
           if (bal.gt(0)) {
-            // You owe
+            // Friend owes you
+            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
+              <span class="text-green-400 font-bold">$${abs} owed to you</span>
+            </div>`;
+          } else if (bal.lt(0)) {
+            // You owe friend
             div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
               <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
               <div class="flex items-center">
@@ -214,73 +207,22 @@
                 <button onclick="settleDebt('${addr}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>
               </div>
             </div>`;
-          } else if (bal.lt(0)) {
-            // Owed to you
-            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
-              <span class="text-green-400 font-bold">$${abs} owed to you</span>
-            </div>`;
           }
         }
+
+        // Also check if YOU are owed (your balance is negative)
+        const myBal = await contract.balanceOf(account);
+        if (myBal.lt(0)) {
+          const abs = ethers.utils.formatUnits(myBal.abs(), 6);
+          div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
+            <span class="font-mono text-sm">Total</span>
+            <span class="text-green-400 font-bold">$${abs} owed to you</span>
+          </div>`;
+        }
+
         showSection("balancesCard");
       } catch (e) {
-        console.log("No balances yet", e);
-      }
-    }
-
-    async function checkFinalized() {
-      try {
-        const finalized = await contract.finalized();
-        if (finalized) {
-          document.getElementById("expenseCard").style.display = "none";
-          document.getElementById("finalizeCard").style.display = "none";
-          loadSummary();
-        }
-      } catch (e) {
-        console.log("Not connected yet");
-      }
-    }
-
-    async function loadSummary() {
-      try {
-        const [who, net] = await contract.getFinalSummary();
-        const div = document.getElementById("summary");
-        div.innerHTML = '';
-        for (let i = 0; i < net.length; i++) {
-          const bal = net[i];
-          const addr = who[i];
-          const abs = ethers.utils.formatUnits(bal.abs(), 6);
-          if (bal.gt(0)) {
-            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
-              <span class="text-red-400 font-bold">$${abs} Pay</span>
-            </div>`;
-          } else if (bal.lt(0)) {
-            div.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-              <span class="font-mono text-sm">${addr.slice(0,6)}...</span>
-              <span class="text-green-400 font-bold">$${abs} Receive</span>
-            </div>`;
-          }
-        }
-        showSection("summaryCard");
-
-        document.getElementById("settleAllBtn").onclick = async () => {
-          try {
-            const [creditors, amounts] = await contract.getMyBalances();
-            for (let i = 0; i < amounts.length; i++) {
-              if (amounts[i].gt(0)) {
-                const tx = await contract.settle(creditors[i]);
-                await tx.wait();
-              }
-            }
-            confetti({ particleCount: 200, spread: 100 });
-            alert("All settled!");
-          } catch (e) {
-            alert("Settle failed: " + e.message);
-          }
-        };
-      } catch (e) {
-        alert("Summary error: " + e.message);
+        console.log("Error loading balances", e);
       }
     }
 
