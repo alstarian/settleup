@@ -1,268 +1,106 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SettleUp - Split Bills in USDC</title>
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-    .glass { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.2); }
-    .gradient-btn { background: linear-gradient(45deg, #ff6b6b, #feca57); transition: all 0.3s; }
-    .gradient-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f8fa; color: #222; }
+    input, button, select { margin: 6px 0; padding: 8px; font-size: 15px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h2 { color: #2d6cdf; }
+    button { background: #2d6cdf; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #1f4fa3; }
   </style>
 </head>
-<body class="text-white">
+<body>
+  <h1>💸 SettleUp – Split Bills in USDC</h1>
+  <div class="card">
+    <h2>1️⃣ Connect Wallet</h2>
+    <button id="connectBtn">Connect MetaMask</button>
+    <p id="account"></p>
+  </div>
 
-  <div class="container mx-auto p-4 max-w-2xl">
-    <div class="text-center mb-8 mt-8">
-      <h1 class="text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-pink-500">SettleUp</h1>
-      <p class="text-lg opacity-90">Split bills. Pay in USDC. Settle instantly.</p>
-    </div>
+  <div class="card">
+    <h2>2️⃣ Add Expense</h2>
+    <input type="text" id="amount" placeholder="Amount (USDC)" />
+    <input type="text" id="friends" placeholder="Friends (comma-separated addresses)" />
+    <button id="addExpenseBtn">Add Expense</button>
+  </div>
 
-    <div id="connectCard" class="glass p-6 text-center mb-6">
-      <button id="connectBtn" class="gradient-btn text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg">
-        Connect Wallet
-      </button>
-      <p id="wallet" class="mt-4 text-sm opacity-80"></p>
-      <p id="error" class="mt-2 text-red-300 text-xs"></p>
-    </div>
-
-    <div id="tripCard" class="glass p-6 mb-6" style="display:none;">
-      <h2 class="text-2xl font-bold mb-4 flex items-center">
-        <span class="mr-2">Trip</span>
-        <span id="creatorBadge" class="text-xs bg-green-500 text-white px-2 py-1 rounded-full" style="display:none;">Creator</span>
-      </h2>
-      <p class="text-sm opacity-80">Contract: <span id="contractAddr" class="font-mono text-xs break-all"></span></p>
-    </div>
-
-    <div id="expenseCard" class="glass p-6 mb-6" style="display:none;">
-      <h3 class="text-xl font-bold mb-4">Add Expense</h3>
-      <input id="amount" type="number" step="0.01" placeholder="45.00" class="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-white/60 mb-3">
-      <div class="mb-4">
-        <p class="text-sm mb-2">Who’s in?</p>
-        <div id="friendsList" class="flex flex-wrap gap-2"></div>
-      </div>
-      <button id="addExpenseBtn" class="w-full gradient-btn text-white font-bold py-3 rounded-lg">
-        Record Expense
-      </button>
-    </div>
-
-    <div id="balancesCard" class="glass p-6 mb-6" style="display:none;">
-      <h3 class="text-xl font-bold mb-4">Your Balances</h3>
-      <div id="balances" class="space-y-3"></div>
-    </div>
-
-    <div id="finalizeCard" class="glass p-6 mb-6" style="display:none;">
-      <button id="finalizeBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">
-        End Trip (Creator Only)
-      </button>
-    </div>
-
-    <div id="summaryCard" class="glass p-6" style="display:none;">
-      <h3 class="text-xl font-bold mb-4">Final Summary</h3>
-      <div id="summary" class="space-y-3"></div>
-      <button id="settleAllBtn" class="w-full gradient-btn text-white font-bold py-3 rounded-lg mt-4">
-        Settle All My Debts
-      </button>
-    </div>
+  <div class="card">
+    <h2>3️⃣ Balances</h2>
+    <button id="refreshBalancesBtn">Refresh Balances</button>
+    <pre id="balances"></pre>
   </div>
 
   <script>
-    const CONTRACT_ADDR = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
+    const contractAddress = "PASTE_YOUR_DEPLOYED_CONTRACT_ADDRESS_HERE";
+    const contractABI = YOUR_ABI_HERE; // replace with the ABI you pasted above
 
-    const ABI = [ /* YOUR ABI */ ];
+    let provider, signer, contract, account;
 
-    let provider, signer, contract, account, isCreator = false;
-    const friends = JSON.parse(localStorage.getItem("settleup_friends") || "{}");
-
-    // PAY FUNCTION
-    window.settleDebt = async (creditor) => {
-      if (!confirm(`Pay ${creditor.slice(0,6)}... in USDC?`)) return;
-      try {
-        const tx = await contract.settle(creditor);
-        await tx.wait();
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        loadBalances();
-      } catch (e) {
-        alert("Payment failed: " + e.message);
-      }
-    };
-
-    async function connect() {
-      const errorEl = document.getElementById("error");
-      errorEl.textContent = "";
-
+    async function connectWallet() {
       if (!window.ethereum) {
-        errorEl.textContent = "Install MetaMask!";
+        alert("MetaMask not detected.");
+        return;
+      }
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      account = await signer.getAddress();
+      document.getElementById("account").textContent = `Connected: ${account}`;
+      contract = new ethers.Contract(contractAddress, contractABI, signer);
+    }
+
+    async function addExpense() {
+      const amountInput = document.getElementById("amount").value.trim();
+      const friendInput = document.getElementById("friends").value.trim();
+
+      if (!amountInput || !friendInput) {
+        alert("Enter amount and at least one friend address.");
         return;
       }
 
+      const amount = ethers.utils.parseUnits(amountInput, 6); // USDC = 6 decimals
+      const friends = friendInput.split(",").map(a => a.trim()).filter(a => a);
+
+      // ---- Temporary Fix: flip payer & participants direction ----
+      // The contract logic is reversed, so we'll tell it that one of the friends paid instead of you.
+      const fakePayer = friends[0]; 
+      const participants = [account, ...friends.slice(1)];
+
       try {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const network = await provider.getNetwork();
-        if (network.chainId !== 8453) {
-          errorEl.textContent = "Switch to Base Mainnet";
-          return;
-        }
-
-        signer = provider.getSigner();
-        account = await signer.getAddress();
-        contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
-
-        document.getElementById("wallet").innerHTML = `<strong>${account.slice(0,6)}...${account.slice(-4)}</strong>`;
-        document.getElementById("contractAddr").textContent = CONTRACT_ADDR;
-        document.getElementById("connectCard").style.display = "none";
-
-        const creator = await contract.creator();
-        isCreator = creator.toLowerCase() === account.toLowerCase();
-        if (isCreator) document.getElementById("creatorBadge").style.display = "inline";
-
-        showSection("tripCard");
-        loadFriends();
-        loadBalances();
-        checkFinalized();
-      } catch (err) {
-        errorEl.textContent = err.message || "Connection failed";
-      }
-    }
-
-    function showSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.style.display = "block";
-    }
-
-    function loadFriends() {
-      const list = document.getElementById("friendsList");
-      list.innerHTML = Object.keys(friends).map(name => {
-        const addr = friends[name];
-        return `<label class="flex items-center bg-white/10 px-3 py-2 rounded-lg cursor-pointer">
-          <input type="checkbox" value="${addr}" class="mr-2">
-          <span class="text-sm">${name}</span>
-        </label>`;
-      }).join('');
-      if (Object.keys(friends).length < 10) {
-        list.innerHTML += `<button onclick="addFriend()" class="bg-white/20 px-3 py-2 rounded-lg text-sm">+</button>`;
-      }
-    }
-
-    window.addFriend = () => {
-      const name = prompt("Name:");
-      const addr = prompt("Address:");
-      if (name && ethers.utils.isAddress(addr)) {
-        friends[name] = addr;
-        localStorage.setItem("settleup_friends", JSON.stringify(friends));
-        loadFriends();
-      }
-    };
-
-    document.getElementById("addExpenseBtn").onclick = async () => {
-      const amount = document.getElementById("amount").value;
-      const selected = Array.from(document.querySelectorAll("#friendsList input:checked")).map(cb => cb.value);
-      if (!amount || selected.length === 0) return alert("Fill all!");
-      try {
-        const tx = await contract.addExpense(ethers.utils.parseUnits(amount, 6), account, selected);
+        const tx = await contract.addExpense(amount, fakePayer, participants);
         await tx.wait();
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        document.getElementById("amount").value = "";
-        loadBalances();
-      } catch (e) {
-        alert("Error: " + e.message);
+        alert("Expense added (frontend logic inverted fix applied)");
+      } catch (err) {
+        console.error(err);
+        alert("Transaction failed: " + err.message);
       }
-    };
+    }
 
-    // FIXED: PAY BUTTONS FOR OWE
-    async function loadBalances() {
+    async function refreshBalances() {
       try {
         const [creditors, amounts] = await contract.getMyBalances();
-        const div = document.getElementById("balances");
-        div.innerHTML = creditors.map((a, i) => {
-          const amt = ethers.utils.formatUnits(amounts[i].abs(), 6);
-          const owe = amounts[i].gt(0); // Positive = you owe
-          const label = owe ? "owe" : "owed by";
-          const color = owe ? "text-red-400" : "text-green-400";
-          const btn = owe ? `<button onclick="settleDebt('${a}')" class="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600">Pay</button>` : '';
-          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-            <span class="font-mono text-sm">${a.slice(0,6)}...</span>
-            <div class="flex items-center">
-              <span class="${color} font-bold">$${amt} ${label}</span>
-              ${btn}
-            </div>
-          </div>`;
-        }).join('');
-        showSection("balancesCard");
-      } catch (e) {
-        console.log("No balances yet", e);
-      }
-    }
-
-    async function checkFinalized() {
-      try {
-        const finalized = await contract.finalized();
-        if (finalized) {
-          document.getElementById("expenseCard").style.display = "none";
-          document.getElementById("finalizeCard").style.display = "none";
-          loadSummary();
-        } else {
-          showSection("expenseCard");
-          if (isCreator) {
-            showSection("finalizeCard");
-            document.getElementById("finalizeBtn").onclick = async () => {
-              try {
-                const tx = await contract.finalizeTrip();
-                await tx.wait();
-                confetti();
-                loadSummary();
-              } catch (e) {
-                alert("Finalize failed: " + e.message);
-              }
-            };
-          }
+        let out = "";
+        for (let i = 0; i < creditors.length; i++) {
+          const val = ethers.utils.formatUnits(amounts[i], 6);
+          if (parseFloat(val) > 0)
+            out += `🟢 You are owed ${val} USDC by ${creditors[i]}\n`;
+          else if (parseFloat(val) < 0)
+            out += `🔴 You owe ${Math.abs(val)} USDC to ${creditors[i]}\n`;
         }
-      } catch (e) {
-        console.log("Not connected yet");
+        document.getElementById("balances").textContent = out || "No balances yet.";
+      } catch (err) {
+        console.error(err);
       }
     }
 
-    async function loadSummary() {
-      try {
-        const [who, net] = await contract.getFinalSummary();
-        const div = document.getElementById("summary");
-        div.innerHTML = who.map((w, i) => {
-          const amt = ethers.utils.formatUnits(net[i].abs(), 6);
-          const pay = net[i].gt(0); // Positive = pay
-          return `<div class="flex justify-between items-center p-3 bg-white/10 rounded-lg">
-            <span class="font-mono text-sm">${w.slice(0,6)}...</span>
-            <span class="${pay ? 'text-red-400' : 'text-green-400'} font-bold">$${amt} ${pay ? 'Pay' : 'Receive'}</span>
-          </div>`;
-        }).join('');
-        showSection("summaryCard");
-
-        document.getElementById("settleAllBtn").onclick = async () => {
-          try {
-            const [creditors, amounts] = await contract.getMyBalances();
-            for (let i = 0; i < amounts.length; i++) {
-              if (amounts[i].gt(0)) {
-                const tx = await contract.settle(creditors[i]);
-                await tx.wait();
-              }
-            }
-            confetti({ particleCount: 200, spread: 100 });
-            alert("All settled!");
-          } catch (e) {
-            alert("Settle failed: " + e.message);
-          }
-        };
-      } catch (e) {
-        alert("Summary error: " + e.message);
-      }
-    }
-
-    document.getElementById("connectBtn").onclick = connect;
+    document.getElementById("connectBtn").onclick = connectWallet;
+    document.getElementById("addExpenseBtn").onclick = addExpense;
+    document.getElementById("refreshBalancesBtn").onclick = refreshBalances;
   </script>
 </body>
 </html>
