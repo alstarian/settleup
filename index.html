@@ -7,15 +7,17 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f7f8fa; color: #222; }
-    input, button, select { margin: 6px 0; padding: 8px; font-size: 15px; }
+    input, button { margin: 6px 0; padding: 8px; font-size: 15px; width: 100%; }
     .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
     h2 { color: #2d6cdf; }
     button { background: #2d6cdf; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
     button:hover { background: #1f4fa3; }
+    pre { background: #f1f1f1; padding: 10px; border-radius: 8px; }
   </style>
 </head>
 <body>
   <h1>💸 SettleUp – Split Bills in USDC</h1>
+  
   <div class="card">
     <h2>1️⃣ Connect Wallet</h2>
     <button id="connectBtn">Connect MetaMask</button>
@@ -36,8 +38,28 @@
   </div>
 
   <script>
-    const contractAddress = "PASTE_YOUR_DEPLOYED_CONTRACT_ADDRESS_HERE";
-    const contractABI = YOUR_ABI_HERE; // replace with the ABI you pasted above
+    const contractAddress = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
+
+    const contractABI = [
+      {"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"}],"name":"ExpenseAdded","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberAdded","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"PotWithdrawn","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Settled","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"finalizer","type":"address"}],"name":"TripFinalized","type":"event"},
+      {"inputs":[],"name":"MAX_MEMBERS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"USDC","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"creator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"finalizeTrip","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"finalized","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getFinalSummary","outputs":[{"internalType":"address[]","name":"who","type":"address[]"},{"internalType":"int256[]","name":"netAmount","type":"int256[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getMyBalances","outputs":[{"internalType":"address[]","name":"creditors","type":"address[]"},{"internalType":"int256[]","name":"amounts","type":"int256[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"members","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"creditor","type":"address"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"withdrawPot","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"stateMutability":"payable","type":"receive"}
+    ];
 
     let provider, signer, contract, account;
 
@@ -63,21 +85,20 @@
         return;
       }
 
-      const amount = ethers.utils.parseUnits(amountInput, 6); // USDC = 6 decimals
+      const amount = ethers.utils.parseUnits(amountInput, 6); // USDC has 6 decimals
       const friends = friendInput.split(",").map(a => a.trim()).filter(a => a);
 
-      // ---- Temporary Fix: flip payer & participants direction ----
-      // The contract logic is reversed, so we'll tell it that one of the friends paid instead of you.
-      const fakePayer = friends[0]; 
+      // 🔁 Temporary Frontend Fix — invert logic direction
+      const fakePayer = friends[0];
       const participants = [account, ...friends.slice(1)];
 
       try {
         const tx = await contract.addExpense(amount, fakePayer, participants);
         await tx.wait();
-        alert("Expense added (frontend logic inverted fix applied)");
+        alert("✅ Expense added (frontend fix applied)");
       } catch (err) {
         console.error(err);
-        alert("Transaction failed: " + err.message);
+        alert("Transaction failed: " + (err.message || err));
       }
     }
 
@@ -95,6 +116,7 @@
         document.getElementById("balances").textContent = out || "No balances yet.";
       } catch (err) {
         console.error(err);
+        alert("Failed to fetch balances");
       }
     }
 
