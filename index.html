@@ -37,345 +37,159 @@
       color: white;
       cursor: pointer;
       border: none;
+      font-weight: bold;
     }
     button:hover {
       background: #1d4ed8;
     }
+    .success { color: #16a34a; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h1>💸 SettleUp - Split Bills in USDC</h1>
+  <h1>SettleUp - Split Bills in USDC</h1>
+
   <div class="card">
     <button id="connectWallet">Connect Wallet</button>
-    <p id="walletAddress"></p>
+    <p id="walletAddress" class="success"></p>
 
     <h3>Add Expense</h3>
-    <input type="number" id="groupId" placeholder="Group ID" />
-    <input type="text" id="description" placeholder="Description" />
-    <input type="number" id="amount" placeholder="Amount (in USDC smallest unit)" />
+    <input type="number" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
+    <input type="text" id="participants" placeholder="Participants (comma-separated addresses)" />
 
-    <label for="payer">Payer (Auto-filled)</label>
-    <input type="text" id="payer" readonly />
+    <label for="payer">Payer (who paid with card)</label>
+    <input type="text" id="payer" placeholder="Enter address of who paid" />
 
-    <button id="addExpense">Add Expense</button>
+    <button id="addExpense">Record Expense</button>
+  </div>
+
+  <div class="card">
+    <h3>Your Balances</h3>
+    <button id="refreshBalances">Refresh Balances</button>
+    <pre id="balances">Connect wallet first...</pre>
   </div>
 
   <script>
     const contractAddress = "0xdfA5b290290762bb84082Da7Fd7cEc94fbe97E54";
     const contractABI = [
-     [
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "usdcAddress",
-				"type": "address"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "payer",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "address[]",
-				"name": "participants",
-				"type": "address[]"
-			}
-		],
-		"name": "ExpenseAdded",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "member",
-				"type": "address"
-			}
-		],
-		"name": "MemberAdded",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "PotWithdrawn",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "Settled",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "finalizer",
-				"type": "address"
-			}
-		],
-		"name": "TripFinalized",
-		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "MAX_MEMBERS",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "USDC",
-		"outputs": [
-			{
-				"internalType": "contract IERC20",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address",
-				"name": "payer",
-				"type": "address"
-			},
-			{
-				"internalType": "address[]",
-				"name": "participants",
-				"type": "address[]"
-			}
-		],
-		"name": "addExpense",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "creator",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "finalizeTrip",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "finalized",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getFinalSummary",
-		"outputs": [
-			{
-				"internalType": "address[]",
-				"name": "who",
-				"type": "address[]"
-			},
-			{
-				"internalType": "int256[]",
-				"name": "netAmount",
-				"type": "int256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getMyBalances",
-		"outputs": [
-			{
-				"internalType": "address[]",
-				"name": "creditors",
-				"type": "address[]"
-			},
-			{
-				"internalType": "int256[]",
-				"name": "amounts",
-				"type": "int256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "members",
-		"outputs": [
-			{
-				"internalType": "address[]",
-				"name": "",
-				"type": "address[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "creditor",
-				"type": "address"
-			}
-		],
-		"name": "settle",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "withdrawPot",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"stateMutability": "payable",
-		"type": "receive"
-	}
-]
-      
+      {
+        "inputs": [
+          { "internalType": "address", "name": "usdcAddress", "type": "address" }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "address", "name": "payer", "type": "address" },
+          { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" }
+        ],
+        "name": "ExpenseAdded",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "address", "name": "payer", "type": "address" },
+          { "internalType": "address[]", "name": "participants", "type": "address[]" }
+        ],
+        "name": "addExpense",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getMyBalances",
+        "outputs": [
+          { "internalType": "address[]", "name": "creditors", "type": "address[]" },
+          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "creditor", "type": "address" }
+        ],
+        "name": "settle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ];
 
-    let provider;
-    let signer;
-    let contract;
-    let signerAddress;
+    let provider, signer, contract, account;
 
     async function connectWallet() {
-      if (typeof window.ethereum !== "undefined") {
-        try {
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          signer = provider.getSigner();
-          signerAddress = await signer.getAddress();
-          contract = new ethers.Contract(contractAddress, contractABI, signer);
+      if (!window.ethereum) return alert("Install MetaMask!");
 
-          document.getElementById("walletAddress").innerText = `Connected: ${signerAddress}`;
-          document.getElementById("payer").value = signerAddress;
-        } catch (err) {
-          alert("Failed to connect wallet: " + err.message);
-        }
-      } else {
-        alert("Please install MetaMask!");
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        account = await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        document.getElementById("walletAddress").innerText = `Connected: ${account.slice(0,6)}...${account.slice(-4)}`;
+        document.getElementById("payer").value = account; // default: you paid
+      } catch (err) {
+        alert("Connection failed: " + err.message);
       }
     }
 
     async function addExpense() {
-      const groupId = document.getElementById("groupId").value;
-      const description = document.getElementById("description").value;
-      const amount = document.getElementById("amount").value;
+      const amountInput = document.getElementById("amount").value;
+      const payerAddr = document.getElementById("payer").value.trim();
+      const participantsInput = document.getElementById("participants").value;
 
-      if (!groupId || !description || !amount) {
-        alert("Please fill all fields.");
-        return;
+      if (!amountInput || !payerAddr || !participantsInput) {
+        return alert("Fill all fields.");
       }
 
+      const amount = ethers.utils.parseUnits(amountInput, 6); // USDC = 6 decimals
+      const participants = participantsInput.split(",").map(a => a.trim()).filter(a => ethers.utils.isAddress(a));
+
+      if (participants.length === 0) return alert("Add at least one valid participant.");
+
       try {
-        const tx = await contract.addExpense(groupId, description, amount, signerAddress);
-        alert("Transaction sent! Hash: " + tx.hash);
+        const tx = await contract.addExpense(amount, payerAddr, participants);
         await tx.wait();
-        alert("Expense added successfully!");
+        alert(`Expense recorded! You paid $${amountInput} → others owe you.`);
+        document.getElementById("amount").value = "";
+        document.getElementById("participants").value = "";
+        refreshBalances();
       } catch (err) {
-        console.error(err);
-        alert("Transaction failed: " + (err.data?.message || err.message));
+        alert("Failed: " + (err.reason || err.message));
       }
     }
 
+    async function refreshBalances() {
+      if (!contract) return;
+      try {
+        const [creditors, amounts] = await contract.getMyBalances();
+        let output = "";
+        for (let i = 0; i < creditors.length; i++) {
+          const bal = amounts[i];
+          const addr = creditors[i];
+          const val = parseFloat(ethers.utils.formatUnits(bal.abs(), 6)).toFixed(2);
+          if (bal.gt(0)) {
+            output += `You owe $${val} to ${addr.slice(0,6)}...\n`;
+          } else if (bal.lt(0)) {
+            output += `$${val} owed to you by ${addr.slice(0,6)}...\n`;
+          }
+        }
+        document.getElementById("balances").textContent = output || "No balances.";
+      } catch (err) {
+        document.getElementById("balances").textContent = "Error loading balances.";
+      }
+    }
+
+    // Button Events
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
+    document.getElementById("refreshBalances").onclick = refreshBalances;
   </script>
 </body>
 </html>
