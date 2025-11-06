@@ -43,6 +43,7 @@
       background: #1d4ed8;
     }
     .success { color: #16a34a; font-weight: bold; }
+    pre { white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -122,6 +123,10 @@
 
     let provider, signer, contract, account;
 
+    function shortAddr(addr) {
+      return addr.slice(0,6) + '...' + addr.slice(-4);
+    }
+
     async function connectWallet() {
       if (!window.ethereum) return alert("Install MetaMask!");
 
@@ -132,8 +137,15 @@
         account = await signer.getAddress();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        document.getElementById("walletAddress").innerText = `Connected: ${account.slice(0,6)}...${account.slice(-4)}`;
-        document.getElementById("payer").value = account; // default: you paid
+        const network = await provider.getNetwork();
+        if (network.chainId !== 8453) { // change if not on Base
+          alert("Please switch to Base Mainnet.");
+          return;
+        }
+
+        document.getElementById("walletAddress").innerText = `Connected: ${shortAddr(account)}`;
+        document.getElementById("payer").value = account; // default payer = you
+        refreshBalances();
       } catch (err) {
         alert("Connection failed: " + err.message);
       }
@@ -145,18 +157,22 @@
       const participantsInput = document.getElementById("participants").value;
 
       if (!amountInput || !payerAddr || !participantsInput) {
-        return alert("Fill all fields.");
+        return alert("Please fill all fields.");
       }
 
       const amount = ethers.utils.parseUnits(amountInput, 6); // USDC = 6 decimals
-      const participants = participantsInput.split(",").map(a => a.trim()).filter(a => ethers.utils.isAddress(a));
+      const participants = [...new Set(participantsInput
+        .split(",")
+        .map(a => a.trim())
+        .filter(a => ethers.utils.isAddress(a)))];
 
       if (participants.length === 0) return alert("Add at least one valid participant.");
 
       try {
         const tx = await contract.addExpense(amount, payerAddr, participants);
+        alert("Waiting for confirmation...");
         await tx.wait();
-        alert(`Expense recorded! You paid $${amountInput} → others owe you.`);
+        alert(`Expense recorded successfully! Tx: https://basescan.org/tx/${tx.hash}`);
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
         refreshBalances();
@@ -166,22 +182,39 @@
     }
 
     async function refreshBalances() {
-      if (!contract) return;
+      if (!contract || !account) {
+        document.getElementById("balances").textContent = "Connect wallet first...";
+        return;
+      }
+
       try {
         const [creditors, amounts] = await contract.getMyBalances();
+
+        if (!creditors || creditors.length === 0) {
+          document.getElementById("balances").textContent = "No balances.";
+          return;
+        }
+
         let output = "";
         for (let i = 0; i < creditors.length; i++) {
-          const bal = amounts[i];
           const addr = creditors[i];
-          const val = parseFloat(ethers.utils.formatUnits(bal.abs(), 6)).toFixed(2);
-          if (bal.gt(0)) {
-            output += `You owe $${val} to ${addr.slice(0,6)}...\n`;
-          } else if (bal.lt(0)) {
-            output += `$${val} owed to you by ${addr.slice(0,6)}...\n`;
+          const raw = amounts[i].toString(); // could be negative
+          const isNegative = raw.startsWith("-");
+          const absRaw = isNegative ? raw.slice(1) : raw;
+          const absBN = ethers.BigNumber.from(absRaw);
+          const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+
+          if (absBN.isZero()) continue;
+          if (isNegative) {
+            output += `$${val} owed to you by ${shortAddr(addr)}\n`;
+          } else {
+            output += `You owe $${val} to ${shortAddr(addr)}\n`;
           }
         }
+
         document.getElementById("balances").textContent = output || "No balances.";
       } catch (err) {
+        console.error("refreshBalances error:", err);
         document.getElementById("balances").textContent = "Error loading balances.";
       }
     }
