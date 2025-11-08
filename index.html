@@ -103,6 +103,16 @@
       0%, 70% { opacity: 1; }
       100% { opacity: 0; }
     }
+    .retry-btn {
+      margin-left: 8px;
+      padding: 2px 6px;
+      font-size: 12px;
+      background: #e11d48;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -217,8 +227,8 @@
     async function connectWallet() {
       if (!window.ethereum) return toast("Install MetaMask!");
 
-      const connectBtn = document.getElementById("connectWallet");
-      setLoading(connectBtn, true);
+      const btn = document.getElementById("connectWallet");
+      setLoading(btn, true);
 
       try {
         provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -227,9 +237,9 @@
         account = await signer.getAddress();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        const network = await provider.getNetwork();
-        if (network.chainId !== 8453) {
-          toast("Switch to Base Mainnet (8453)");
+        const net = await provider.getNetwork();
+        if (net.chainId !== 8453) {
+          toast("Switch to Base Mainnet");
           try {
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
@@ -238,14 +248,13 @@
           } catch (e) {
             toast("Failed to switch network");
           }
-          setLoading(connectBtn, false);
+          setLoading(btn, false);
           return;
         }
 
-        document.getElementById("walletAddress").innerText = `Connected: ${shortAddr(account)}`;
+        document.getElementById("walletAddress").textContent = `Connected: ${shortAddr(account)}`;
         document.getElementById("payer").value = account;
 
-        // Enable buttons
         document.getElementById("addExpense").disabled = false;
         document.getElementById("refreshBalances").disabled = false;
 
@@ -254,19 +263,18 @@
 
         window.ethereum.on('accountsChanged', () => location.reload());
         window.ethereum.on('chainChanged', () => location.reload());
-
-      } catch (err) {
-        toast("Connection failed: " + err.message);
+      } catch (e) {
+        toast("Connect failed: " + (e.reason || e.message));
       } finally {
-        setLoading(connectBtn, false);
+        setLoading(btn, false);
       }
     }
 
     async function initUSDC() {
       usdcContract = new ethers.Contract(USDC, [
         "function balanceOf(address) view returns (uint256)",
-        "function allowance(address owner,address spender) view returns (uint256)",
-        "function approve(address spender,uint256 amount) returns (bool)"
+        "function allowance(address,address) view returns (uint256)",
+        "function approve(address,uint256) returns (bool)"
       ], signer);
 
       const bal = await usdcContract.balanceOf(account);
@@ -283,11 +291,10 @@
       setLoading(btn, true);
       try {
         const tx = await usdcContract.approve(contractAddress, ethers.constants.MaxUint256);
-        toast("Approving USDC...");
+        toast("Approving USDC…");
         await tx.wait();
         btn.style.display = "none";
         toast("USDC approved! You can settle.");
-        document.getElementById("usdcBalance").textContent = `USDC: ${ethers.utils.formatUnits(await usdcContract.balanceOf(account), 6)}`;
       } catch (e) {
         toast("Approval failed: " + (e.reason || e.message));
       } finally {
@@ -297,123 +304,115 @@
 
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
-      const payerAddr = document.getElementById("payer").value.trim();
+      const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
-      const statusEl = document.getElementById("addExpenseStatus");
+      const status = document.getElementById("addExpenseStatus");
 
-      if (!amountInput || !payerAddr || !participantsInput) {
-        return toast("Fill all fields.");
-      }
-      if (!ethers.utils.isAddress(payerAddr)) {
-        return toast("Invalid payer address.");
-      }
+      if (!amountInput || !payer || !participantsInput) return toast("Fill all fields");
+      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
-      let participants = participantsInput
-        .split(",")
+      const participants = participantsInput.split(",")
         .map(a => a.trim())
         .filter(a => ethers.utils.isAddress(a));
 
-      if (participants.length === 0) return toast("Add valid participants.");
+      if (participants.length === 0) return toast("No valid participants");
+      if (!participants.some(p => p.toLowerCase() === payer.toLowerCase())) participants.push(payer);
 
-      if (!participants.some(p => p.toLowerCase() === payerAddr.toLowerCase())) {
-        participants.push(payerAddr);
-      }
-
-      const addBtn = document.getElementById("addExpense");
-      setLoading(addBtn, true);
-      statusEl.textContent = "";
-      statusEl.className = "";
+      const btn = document.getElementById("addExpense");
+      setLoading(btn, true);
+      status.textContent = "";
+      status.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payerAddr, participants);
-        statusEl.textContent = "Confirming...";
-        statusEl.className = "success";
+        const tx = await contract.addExpense(amount, payer, participants);
+        status.textContent = "Confirming…";
+        status.className = "success";
         await tx.wait();
-        
-        statusEl.innerHTML = `Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View</a>`;
-        statusEl.className = "success";
+
+        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View Tx</a>`;
+        status.className = "success";
 
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
         refreshBalances();
-      } catch (err) {
-        statusEl.textContent = "Failed: " + (err.reason || err.message);
-        statusEl.className = "error";
+      } catch (e) {
+        status.textContent = "Failed: " + (e.reason || e.message);
+        status.className = "error";
       } finally {
-        setLoading(addBtn, false);
+        setLoading(btn, false);
       }
     }
 
     async function settleWith(creditor) {
       if (!confirm(`Settle with ${shortAddr(creditor)}?`)) return;
-
       try {
         const tx = await contract.settle(creditor);
-        toast("Settling...");
+        toast("Settling…");
         await tx.wait();
         toast(`Settled! https://basescan.org/tx/${tx.hash}`);
         refreshBalances();
-      } catch (err) {
-        toast("Settle failed: " + (err.reason || err.message));
+      } catch (e) {
+        toast("Settle error: " + (e.reason || e.message));
       }
     }
 
     async function refreshBalances() {
-      const balancesEl = document.getElementById("balances");
-      const refreshBtn = document.getElementById("refreshBalances");
+      const el = document.getElementById("balances");
+      const btn = document.getElementById("refreshBalances");
 
       if (!contract || !account) {
-        balancesEl.innerHTML = "Connect wallet first...";
+        el.innerHTML = "Connect wallet first…";
         return;
       }
 
-      setLoading(refreshBtn, true);
-      balancesEl.innerHTML = "Loading...";
+      setLoading(btn, true);
+      el.innerHTML = "Loading…";
+
+      let creditors = [], amounts = [];
 
       try {
-        const [creditors, amounts] = await contract.getMyBalances();
-
-        if (!creditors || creditors.length === 0) {
-          balancesEl.innerHTML = "<em>No balances.</em>";
-          setLoading(refreshBtn, false);
-          return;
-        }
-
-        let output = "";
-        for (let i = 0; i < creditors.length; i++) {
-          const addr = creditors[i];
-          if (addr.toLowerCase() === account.toLowerCase()) continue;
-
-          const raw = amounts[i].toString();
-          const isPositive = !raw.startsWith("-");
-          const absRaw = isPositive ? raw : raw.slice(1);
-          const absBN = ethers.BigNumber.from(absRaw);
-          const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
-
-          if (absBN.isZero()) continue;
-
-          if (isPositive) {
-            output += `
-              <div class="balance-item">
-                <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
-              </div>`;
-          } else {
-            output += `
-              <div class="balance-item">
-                <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
-                <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
-              </div>`;
-          }
-        }
-
-        balancesEl.innerHTML = output || "<em>No balances.</em>";
-      } catch (err) {
-        console.error(err);
-        balancesEl.innerHTML = "<span class='error'>Error loading balances.</span>";
-      } finally {
-        setLoading(refreshBtn, false);
+        [creditors, amounts] = await contract.getMyBalances();
+      } catch (e) {
+        console.warn("getMyBalances failed (retry later)", e);
+        el.innerHTML = `<span class="error">Balances not ready. <button class="retry-btn" onclick="refreshBalances()">Retry</button></span>`;
+        setLoading(btn, false);
+        return;
       }
+
+      if (!creditors || creditors.length === 0) {
+        el.innerHTML = "<em>No balances.</em>";
+        setLoading(btn, false);
+        return;
+      }
+
+      let html = "";
+      for (let i = 0; i < creditors.length; i++) {
+        const addr = creditors[i];
+        if (addr.toLowerCase() === account.toLowerCase()) continue;
+
+        const raw = amounts[i].toString();
+        const positive = !raw.startsWith("-");
+        const absRaw = positive ? raw : raw.slice(1);
+        const absBN = ethers.BigNumber.from(absRaw);
+        const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+
+        if (absBN.isZero()) continue;
+
+        if (positive) {
+          html += `<div class="balance-item">
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
+                   </div>`;
+        } else {
+          html += `<div class="balance-item">
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
+                     <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
+                   </div>`;
+        }
+      }
+
+      el.innerHTML = html || "<em>No balances.</em>";
+      setLoading(btn, false);
     }
 
     // Event Listeners
@@ -421,12 +420,12 @@
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
-    // Validate participants
-    document.getElementById("participants").addEventListener("blur", function() {
+    // Clean participant input
+    document.getElementById("participants").addEventListener("blur", function () {
       const vals = this.value.split(",").map(a => a.trim());
       const valid = vals.filter(a => ethers.utils.isAddress(a));
       if (valid.length !== vals.length) {
-        toast("Invalid address(es) removed.");
+        toast("Invalid address(es) removed");
         this.value = valid.join(", ");
       }
     });
