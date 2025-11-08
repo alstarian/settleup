@@ -52,14 +52,6 @@
     }
     .success { color: #16a34a; font-weight: bold; }
     .error { color: #dc2626; }
-    pre { 
-      white-space: pre-line; 
-      background: #f1f5f9;
-      padding: 16px;
-      border-radius: 8px;
-      margin: 10px 0;
-      font-family: monospace;
-    }
     .balance-item {
       display: flex;
       justify-content: space-between;
@@ -102,16 +94,6 @@
     @keyframes fade {
       0%, 70% { opacity: 1; }
       100% { opacity: 0; }
-    }
-    .retry-btn {
-      margin-left: 8px;
-      padding: 2px 6px;
-      font-size: 12px;
-      background: #e11d48;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -302,6 +284,7 @@
       }
     };
 
+    // AUTO-REFRESH BALANCES AFTER EXPENSE
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
       const payer = document.getElementById("payer").value.trim();
@@ -328,14 +311,18 @@
         const tx = await contract.addExpense(amount, payer, participants);
         status.textContent = "Confirming…";
         status.className = "success";
-        await tx.wait();
 
-        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View Tx</a>`;
+        const receipt = await tx.wait();
+
+        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
         status.className = "success";
 
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
-        refreshBalances();
+
+        toast("Expense recorded! Loading balances...");
+        setTimeout(refreshBalances, 1500); // Auto-refresh after confirmation
+
       } catch (e) {
         status.textContent = "Failed: " + (e.reason || e.message);
         status.className = "error";
@@ -374,8 +361,8 @@
       try {
         [creditors, amounts] = await contract.getMyBalances();
       } catch (e) {
-        console.warn("getMyBalances failed (retry later)", e);
-        el.innerHTML = `<span class="error">Balances not ready. <button class="retry-btn" onclick="refreshBalances()">Retry</button></span>`;
+        console.warn("getMyBalances failed", e);
+        el.innerHTML = `<span class="error">Loading balances... (this may take a few seconds)</span>`;
         setLoading(btn, false);
         return;
       }
