@@ -478,30 +478,22 @@
   </div>
 
   <script>
-    const contractAddress = "0xe96cE1AcEF0DCe364a9e7e751D46e1B6Da0cce40";
+    const contractAddress = "0xf6b491763ca2e099bb6c9d3e573524c426152aeb";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
     const contractABI = [
-      { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "stateMutability": "nonpayable", "type": "constructor" },
-      { "anonymous": false, "inputs": [
-          { "indexed": true, "internalType": "address", "name": "payer", "type": "address" },
-          { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
-          { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" }
-        ], "name": "ExpenseAdded", "type": "event" },
-      { "anonymous": false, "inputs": [
-          { "indexed": true, "internalType": "address", "name": "debtor", "type": "address" },
-          { "indexed": true, "internalType": "address", "name": "creditor", "type": "address" },
-          { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
-        ], "name": "Settled", "type": "event" },
+      { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [
           { "internalType": "uint256", "name": "amount", "type": "uint256" },
           { "internalType": "address", "name": "payer", "type": "address" },
-          { "internalType": "address[]", "name": "participants", "type": "address[]" }
+          { "internalType": "address[]", "name": "participants", "type": "address[]" },
+          { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [], "name": "getMyBalances", "outputs": [
-          { "internalType": "address[]", "name": "creditors", "type": "address[]" },
-          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
+          { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
+          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" },
+          { "internalType": "string[]", "name": "categories", "type": "string[]" }
         ], "stateMutability": "view", "type": "function" }
     ];
 
@@ -637,7 +629,6 @@
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
 
-      // Remove duplicates and filter out payer
       const participants = [...new Set(
         participantsInput
           .split(",")
@@ -655,7 +646,7 @@
       statusEl.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payer, participants);
+        const tx = await contract.addExpense(amount, payer, participants, desc);
         
         statusEl.textContent = "⏳ Confirming transaction...";
         statusEl.className = "status-message success";
@@ -720,9 +711,9 @@
         </div>
       `;
 
-      let creditors = [], amounts = [];
+      let counterparts = [], amounts = [], categories = [];
       try {
-        [creditors, amounts] = await contract.getMyBalances();
+        [counterparts, amounts, categories] = await contract.getMyBalances();
       } catch (e) {
         console.error("getMyBalances failed", e);
         el.innerHTML = `
@@ -735,7 +726,7 @@
         return;
       }
 
-      if (!creditors || creditors.length === 0) {
+      if (!counterparts || counterparts.length === 0) {
         el.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">✨</div>
@@ -747,18 +738,16 @@
       }
 
       let html = '<div class="balance-list">';
-      const desc = window.lastExpenseDesc || "Expense";
       let hasBalances = false;
 
-      for (let i = 0; i < creditors.length; i++) {
-        const addr = creditors[i];
-        if (addr.toLowerCase() === account.toLowerCase()) continue;
-
+      for (let i = 0; i < counterparts.length; i++) {
+        const addr = counterparts[i];
         const raw = amounts[i].toString();
         const positive = !raw.startsWith("-");
         const absRaw = positive ? raw : raw.slice(1);
         const absBN = ethers.BigNumber.from(absRaw);
         const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+        const category = categories[i] || "Expense";
 
         if (absBN.isZero()) continue;
         hasBalances = true;
@@ -770,7 +759,7 @@
                 ${positive ? '+' : '-'}$${val}
               </div>
               <div class="balance-address">${shortAddr(addr)}</div>
-              <div class="balance-tag">${desc}</div>
+              <div class="balance-tag">${category}</div>
             </div>
             ${!positive ? `<button class="btn-settle" onclick="settleWith('${addr}')">Settle</button>` : ''}
           </div>
