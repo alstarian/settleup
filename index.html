@@ -35,9 +35,9 @@
 
     <h3>Add Expense</h3>
     <input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
-    <input type="text" id="participants" placeholder="Participants (e.g. 0x123... or bob.base.eth)" />
+    <input type="text" id="participants" placeholder="Participants (comma-separated 0x... addresses)" />
     <label for="payer">Payer (who paid with card)</label>
-    <input type="text" id="payer" placeholder="e.g. 0x095c... or alstarian.base.eth" />
+    <input type="text" id="payer" placeholder="Enter 0x... address" />
     <button id="addExpense" disabled>Record Expense</button>
     <p id="addExpenseStatus"></p>
   </div>
@@ -76,30 +76,11 @@
         ], "stateMutability": "view", "type": "function" }
     ];
 
-    let provider, signer, contract, account, usdcContract, ensSupported = true;
+    let provider, signer, contract, account, usdcContract;
 
     function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
     function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
     function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
-
-    // ENS-ERROR PROOF: Resolve names with fallback
-    async function resolveName(name) {
-      if (ethers.utils.isAddress(name)) return name;
-      if (!ensSupported) return null; // Skip if ENS not supported
-      if (!name.endsWith('.base.eth') && !name.endsWith('.eth')) return null;
-      try {
-        const addr = await provider.resolveName(name);
-        if (addr && ethers.utils.isAddress(addr)) return addr;
-      } catch (e) {
-        if (e.message.includes("network doesn't support ENS")) {
-          ensSupported = false;
-          toast("ENS not supported on this network. Use full addresses (0x...)");
-        } else {
-          console.warn("ENS resolve failed:", name, e);
-        }
-      }
-      return null;
-    }
 
     async function connectWallet() {
       if (!window.ethereum) return toast("Install MetaMask!");
@@ -120,19 +101,8 @@
           return;
         }
 
-        // Test ENS support
-        try {
-          await provider.lookupAddress(account); // Simple test
-        } catch (e) {
-          if (e.message.includes("network doesn't support ENS")) {
-            ensSupported = false;
-            toast("ENS disabled on this network. Use full addresses.");
-          }
-        }
-
-        const ensName = ensSupported ? (await provider.lookupAddress(account) || shortAddr(account)) : shortAddr(account);
-        document.getElementById("walletAddress").textContent = `Connected: ${ensName}`;
-        document.getElementById("payer").value = ensName.includes('.base.eth') ? ensName : account;
+        document.getElementById("walletAddress").textContent = `Connected: ${shortAddr(account)}`;
+        document.getElementById("payer").value = account;
 
         document.getElementById("addExpense").disabled = false;
         document.getElementById("refreshBalances").disabled = false;
@@ -170,32 +140,24 @@
 
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
-      const payerInput = document.getElementById("payer").value.trim();
+      const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
       const status = document.getElementById("addExpenseStatus");
 
-      if (!amountInput || !payerInput || !participantsInput) return toast("Fill all fields");
+      if (!amountInput || !payer || !participantsInput) return toast("Fill all fields");
+      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
 
-      // Resolve payer
-      const payerAddr = await resolveName(payerInput);
-      if (!payerAddr) return toast("Invalid payer name or address");
+      const participants = participantsInput
+        .split(",")
+        .map(a => a.trim())
+        .filter(a => ethers.utils.isAddress(a) && a.toLowerCase() !== payer.toLowerCase());
 
-      // Resolve participants
-      const participantNames = participantsInput.split(',').map(s => s.trim()).filter(s => s);
-      const resolvedParticipants = [];
-      for (const name of participantNames) {
-        const addr = await resolveName(name);
-        if (!addr) return toast(`Invalid participant: ${name}`);
-        if (addr.toLowerCase() === payerAddr.toLowerCase()) continue;
-        resolvedParticipants.push(addr);
-      }
-
-      if (resolvedParticipants.length === 0) return toast("Add at least one other participant");
+      if (participants.length === 0) return toast("Add at least one other participant");
 
       // SILENTLY include payer in contract call
-      const fullParticipants = [payerAddr, ...resolvedParticipants];
+      const fullParticipants = [payer, ...participants];
 
       const btn = document.getElementById("addExpense");
       setLoading(btn, true);
@@ -203,7 +165,7 @@
       status.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payerAddr, fullParticipants);
+        const tx = await contract.addExpense(amount, payer, fullParticipants);
         status.textContent = "Confirming…";
         status.className = "success";
 
@@ -274,15 +236,13 @@
 
         if (absBN.isZero()) continue;
 
-        const name = ensSupported ? (await provider.lookupAddress(addr)) || shortAddr(addr) : shortAddr(addr);
-
         if (positive) {
           html += `<div class="balance-item">
-                     <span style="color:#16a34a;">$${val} owed to you by</span> ${name}
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
                    </div>`;
         } else {
           html += `<div class="balance-item">
-                     <span style="color:#dc2626;">You owe $${val} to</span> ${name}
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
                      <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
                    </div>`;
         }
@@ -297,14 +257,14 @@
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
-    // Auto-resolve on blur (with ENS check)
-    ['payer', 'participants'].forEach(id => {
-      document.getElementById(id).addEventListener('blur', async function () {
-        const val = this.value.trim();
-        if (!val || ethers.utils.isAddress(val) || !ensSupported) return;
-        const addr = await resolveName(val);
-        if (addr) this.value = addr;
-      });
+    // Validate addresses on blur
+    document.getElementById("participants").addEventListener("blur", function () {
+      const vals = this.value.split(",").map(a => a.trim());
+      const valid = vals.filter(a => ethers.utils.isAddress(a));
+      if (valid.length !== vals.length) {
+        toast("Invalid address(es) removed");
+        this.value = valid.join(", ");
+      }
     });
   </script>
 </body>
