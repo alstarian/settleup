@@ -21,7 +21,6 @@
     .settle-btn:hover { background: #059669; }
     .loading { opacity: 0.6; pointer-events: none; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; animation: fade 3s forwards; z-index: 1000; }
-    .tag { font-size: 12px; color: #6b7280; font-style: italic; margin-left: 6px; }
     @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
   </style>
 </head>
@@ -34,18 +33,13 @@
     <p id="usdcBalance"></p>
     <button id="approveUSDC" style="display:none; margin:10px 0;">Approve USDC for SettleUp</button>
 
-    <h3>Add Expense</h3>
-    <input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
-    <input type="text" id="participants" placeholder="Participants (e.g. bob.base.eth, 0x123..., charlie.eth)" />
-    <label for="payer">Payer (who paid with card)</label>
-    <input type="text" id="payer" placeholder="e.g. alstarian.base.eth or 0x..." />
-    
-    <label for="expenseDesc">Expense Description (optional)</label>
-    <input type="text" id="expenseDesc" placeholder="e.g. Lunch at Chipotle, Cinema - Avengers" />
-
-    <button id="addExpense" disabled>Record Expense</button>
-    <p id="addExpenseStatus"></p>
-  </div>
+<h3>Add Expense</h3>
+<input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
+<input type="text" id="participants" placeholder="Participants (comma-separated 0x... addresses)" />
+<label for="payer">Payer (who paid with card)</label>
+<input type="text" id="payer" placeholder="Enter 0x... address" />
+<button id="addExpense" disabled>Record Expense</button>
+<p id="addExpenseStatus"></p>  </div>
 
   <div class="card">
     <h3>Your Balances</h3>
@@ -87,19 +81,6 @@
     function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
     function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
 
-    // RESOLVE ENS NAMES
-    async function resolveName(name) {
-      if (ethers.utils.isAddress(name)) return name;
-      if (!name.includes('.')) return null;
-      try {
-        const addr = await provider.resolveName(name.trim());
-        if (addr && ethers.utils.isAddress(addr)) return addr;
-      } catch (e) {
-        console.warn("ENS resolve failed:", name, e);
-      }
-      return null;
-    }
-
     async function connectWallet() {
       if (!window.ethereum) return toast("Install MetaMask!");
       const btn = document.getElementById("connectWallet");
@@ -119,9 +100,8 @@
           return;
         }
 
-        const ensName = await provider.lookupAddress(account) || shortAddr(account);
-        document.getElementById("walletAddress").textContent = `Connected: ${ensName}`;
-        document.getElementById("payer").value = ensName.includes('.') ? ensName : account;
+        document.getElementById("walletAddress").textContent = `Connected: ${shortAddr(account)}`;
+        document.getElementById("payer").value = account;
 
         document.getElementById("addExpense").disabled = false;
         document.getElementById("refreshBalances").disabled = false;
@@ -159,49 +139,44 @@
 
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
-      const payerInput = document.getElementById("payer").value.trim();
+      const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
-      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
       const status = document.getElementById("addExpenseStatus");
 
-      if (!amountInput || !payerInput || !participantsInput) return toast("Fill all fields");
+      if (!amountInput || !payer || !participantsInput) return toast("Fill all fields");
+      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
 
-      // Resolve ENS names
-      const payerAddr = await resolveName(payerInput);
-      if (!payerAddr) return toast("Invalid payer: not a valid address or ENS name");
+      const amount = ethers.utils.parseUnits(amountInput, 6);
 
-      const participantNames = participantsInput.split(',').map(s => s.trim()).filter(Boolean);
-      const participants = [];
-      for (const name of participantNames) {
-        const addr = await resolveName(name);
-        if (!addr) return toast(`Invalid participant: ${name}`);
-        if (addr.toLowerCase() === payerAddr.toLowerCase()) continue;
-        participants.push(addr);
-      }
+      const participants = participantsInput
+        .split(",")
+        .map(a => a.trim())
+        .filter(a => ethers.utils.isAddress(a) && a.toLowerCase() !== payer.toLowerCase());
 
       if (participants.length === 0) return toast("Add at least one other participant");
 
-      const amount = ethers.utils.parseUnits(amountInput, 6);
+      // SILENTLY include payer in contract call
+      const fullParticipants = [payer, ...participants];
+
       const btn = document.getElementById("addExpense");
       setLoading(btn, true);
       status.textContent = "";
       status.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payerAddr, participants);
+        const tx = await contract.addExpense(amount, payer, fullParticipants);
         status.textContent = "Confirming…";
         status.className = "success";
-        await tx.wait();
 
-        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View Tx</a>`;
+        const receipt = await tx.wait();
+
+        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
         status.className = "success";
 
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
-        document.getElementById("expenseDesc").value = "";
 
-        window.lastExpenseDesc = desc;
-        toast(`Expense recorded: "${desc}"!`);
+        toast("Expense recorded! Loading balances...");
         setTimeout(refreshBalances, 1500);
       } catch (e) {
         status.textContent = "Failed: " + (e.reason || e.message);
@@ -248,8 +223,6 @@
       }
 
       let html = "";
-      const desc = window.lastExpenseDesc || "Expense";
-
       for (let i = 0; i < creditors.length; i++) {
         const addr = creditors[i];
         if (addr.toLowerCase() === account.toLowerCase()) continue;
@@ -262,16 +235,13 @@
 
         if (absBN.isZero()) continue;
 
-        const name = (await provider.lookupAddress(addr)) || shortAddr(addr);
-        const tag = `<span class="tag">(${desc})</span>`;
-
         if (positive) {
           html += `<div class="balance-item">
-                     <span style="color:#16a34a;">$${val} owed to you by</span> ${name} ${tag}
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
                    </div>`;
         } else {
           html += `<div class="balance-item">
-                     <span style="color:#dc2626;">You owe $${val} to</span> ${name} ${tag}
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
                      <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
                    </div>`;
         }
@@ -281,9 +251,21 @@
       setLoading(btn, false);
     }
 
+    // Event Listeners
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
+
+    // Validate addresses on blur
+    document.getElementById("participants").addEventListener("blur", function () {
+      const vals = this.value.split(",").map(a => a.trim());
+      const valid = vals.filter(a => ethers.utils.isAddress(a));
+      if (valid.length !== vals.length) {
+        toast("Invalid address(es) removed");
+        this.value = valid.join(", ");
+      }
+    });
   </script>
 </body>
 </html>
+
