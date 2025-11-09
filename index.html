@@ -6,86 +6,23 @@
   <title>SettleUp - Split Bills in USDC</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f8fafc;
-      color: #111827;
-      padding: 20px;
-      margin: 0;
-    }
-    h1 {
-      color: #2563eb;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      padding: 24px;
-      margin: 20px auto;
-      max-width: 600px;
-    }
-    input, button, select {
-      display: block;
-      width: 100%;
-      margin: 12px 0;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 16px;
-    }
-    button {
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-      border: none;
-      font-weight: bold;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #1d4ed8;
-    }
-    button:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-    }
+    body { font-family: Arial, sans-serif; background: #f8fafc; color: #111827; padding: 20px; margin: 0; }
+    h1 { color: #2563eb; text-align: center; margin-bottom: 30px; }
+    .card { background: white; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 24px; margin: 20px auto; max-width: 600px; }
+    input, button { display: block; width: 100%; margin: 12px 0; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 16px; }
+    button { background: #2563eb; color: white; cursor: pointer; border: none; font-weight: bold; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
     .success { color: #16a34a; font-weight: bold; }
     .error { color: #dc2626; }
-    pre { 
-      white-space: pre-line; 
-      background: #f1f5f9;
-      padding: 16px;
-      border-radius: 8px;
-      margin: 10px 0;
-      font-family: monospace;
-    }
-    .balance-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .balance-item:last-child {
-      border-bottom: none;
-    }
-    .settle-btn {
-      background: #10b981;
-      color: white;
-      padding: 6px 12px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-    }
-    .settle-btn:hover {
-      background: #059669;
-    }
-    .loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
+    .balance-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+    .balance-item:last-child { border-bottom: none; }
+    .settle-btn { background: #10b981; color: white; padding: 6px 12px; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; }
+    .settle-btn:hover { background: #059669; }
+    .loading { opacity: 0.6; pointer-events: none; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; animation: fade 3s forwards; z-index: 1000; }
+    .tag { font-size: 12px; color: #6b7280; font-style: italic; margin-left: 6px; }
+    @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
   </style>
 </head>
 <body>
@@ -94,14 +31,21 @@
   <div class="card">
     <button id="connectWallet">Connect Wallet</button>
     <p id="walletAddress" class="success"></p>
+    <p id="usdcBalance"></p>
+    <button id="approveUSDC" style="display:none; margin:10px 0;">Approve USDC for SettleUp</button>
 
-<h3>Add Expense</h3>
-<input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
-<input type="text" id="participants" placeholder="Participants (comma-separated addresses)" />
-<label for="payer">Payer (who paid with card)</label>
-<input type="text" id="payer" placeholder="Enter address of who paid" />
-<button id="addExpense" disabled>Record Expense</button>
-<p id="addExpenseStatus"></p>  </div>
+    <h3>Add Expense</h3>
+    <input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
+    <input type="text" id="participants" placeholder="Participants (comma-separated 0x... addresses)" />
+    <label for="payer">Payer (who paid with card)</label>
+    <input type="text" id="payer" placeholder="Enter 0x... address" />
+    
+    <label for="expenseDesc">Expense Description (optional)</label>
+    <input type="text" id="expenseDesc" placeholder="e.g. Lunch at Chipotle, Cinema - Avengers" />
+
+    <button id="addExpense" disabled>Record Expense</button>
+    <p id="addExpenseStatus"></p>
+  </div>
 
   <div class="card">
     <h3>Your Balances</h3>
@@ -111,78 +55,42 @@
 
   <script>
     const contractAddress = "0xe96cE1AcEF0DCe364a9e7e751D46e1B6Da0cce40";
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
     const contractABI = [
-      {
-        "inputs": [
-          { "internalType": "address", "name": "usdcAddress", "type": "address" }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
+      { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "stateMutability": "nonpayable", "type": "constructor" },
+      { "anonymous": false, "inputs": [
           { "indexed": true, "internalType": "address", "name": "payer", "type": "address" },
           { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
           { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" }
-        ],
-        "name": "ExpenseAdded",
-        "type": "event"
-      },
-      {
-        "inputs": [
+        ], "name": "ExpenseAdded", "type": "event" },
+      { "anonymous": false, "inputs": [
+          { "indexed": true, "internalType": "address", "name": "debtor", "type": "address" },
+          { "indexed": true, "internalType": "address", "name": "creditor", "type": "address" },
+          { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ], "name": "Settled", "type": "event" },
+      { "inputs": [
           { "internalType": "uint256", "name": "amount", "type": "uint256" },
           { "internalType": "address", "name": "payer", "type": "address" },
           { "internalType": "address[]", "name": "participants", "type": "address[]" }
-        ],
-        "name": "addExpense",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "getMyBalances",
-        "outputs": [
+        ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [], "name": "getMyBalances", "outputs": [
           { "internalType": "address[]", "name": "creditors", "type": "address[]" },
           { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          { "internalType": "address", "name": "creditor", "type": "address" }
-        ],
-        "name": "settle",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
+        ], "stateMutability": "view", "type": "function" }
     ];
 
-    let provider, signer, contract, account;
+    let provider, signer, contract, account, usdcContract;
 
-    function shortAddr(addr) {
-      return addr.slice(0,6) + '...' + addr.slice(-4);
-    }
-
-    function setLoading(el, loading) {
-      if (loading) {
-        el.classList.add('loading');
-        el.disabled = true;
-      } else {
-        el.classList.remove('loading');
-        el.disabled = false;
-      }
-    }
+    function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
+    function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
+    function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
 
     async function connectWallet() {
-      if (!window.ethereum) return alert("Install MetaMask!");
-
-      const connectBtn = document.getElementById("connectWallet");
-      setLoading(connectBtn, true);
-
+      if (!window.ethereum) return toast("Install MetaMask!");
+      const btn = document.getElementById("connectWallet");
+      setLoading(btn, true);
       try {
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
@@ -190,171 +98,181 @@
         account = await signer.getAddress();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        const network = await provider.getNetwork();
-        if (network.chainId !== 8453) {
-          alert("Please switch to Base Mainnet (chain ID: 8453).");
-          setLoading(connectBtn, false);
+        const net = await provider.getNetwork();
+        if (net.chainId !== 8453) {
+          toast("Switch to Base Mainnet");
+          await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
+          setLoading(btn, false);
           return;
         }
 
-        document.getElementById("walletAddress").innerText = `Connected: ${shortAddr(account)}`;
+        document.getElementById("walletAddress").textContent = `Connected: ${shortAddr(account)}`;
         document.getElementById("payer").value = account;
-        
-        // Enable buttons
+
         document.getElementById("addExpense").disabled = false;
         document.getElementById("refreshBalances").disabled = false;
 
+        await initUSDC();
         refreshBalances();
 
-        // Auto-reconnect on changes
         window.ethereum.on('accountsChanged', () => location.reload());
         window.ethereum.on('chainChanged', () => location.reload());
-
-      } catch (err) {
-        alert("Connection failed: " + err.message);
-      } finally {
-        setLoading(connectBtn, false);
-      }
+      } catch (e) { toast("Connect failed: " + (e.reason || e.message)); } finally { setLoading(btn, false); }
     }
+
+    async function initUSDC() {
+      usdcContract = new ethers.Contract(USDC, [
+        "function balanceOf(address) view returns (uint256)",
+        "function allowance(address,address) view returns (uint256)",
+        "function approve(address,uint256) returns (bool)"
+      ], signer);
+      const bal = await usdcContract.balanceOf(account);
+      document.getElementById("usdcBalance").textContent = `USDC: ${ethers.utils.formatUnits(bal, 6)}`;
+      const allowance = await usdcContract.allowance(account, contractAddress);
+      if (allowance.lt(ethers.utils.parseUnits("1000", 6))) document.getElementById("approveUSDC").style.display = "block";
+    }
+
+    document.getElementById("approveUSDC").onclick = async () => {
+      const btn = document.getElementById("approveUSDC"); setLoading(btn, true);
+      try {
+        const tx = await usdcContract.approve(contractAddress, ethers.constants.MaxUint256);
+        toast("Approving USDC…");
+        await tx.wait();
+        btn.style.display = "none";
+        toast("USDC approved!");
+      } catch (e) { toast("Approval failed: " + (e.reason || e.message)); } finally { setLoading(btn, false); }
+    };
 
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
-      const payerAddr = document.getElementById("payer").value.trim();
+      const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
-      const statusEl = document.getElementById("addExpenseStatus");
+      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
+      const status = document.getElementById("addExpenseStatus");
 
-      if (!amountInput || !payerAddr || !participantsInput) {
-        return alert("Please fill all fields.");
-      }
-      if (!ethers.utils.isAddress(payerAddr)) {
-        return alert("Invalid payer address.");
-      }
+      if (!amountInput || !payer || !participantsInput) return toast("Fill all required fields");
+      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
-      let participants = participantsInput
+
+      const participants = participantsInput
         .split(",")
         .map(a => a.trim())
-        .filter(a => ethers.utils.isAddress(a));
+        .filter(a => ethers.utils.isAddress(a) && a.toLowerCase() !== payer.toLowerCase());
 
-      if (participants.length === 0) return alert("Add at least one valid participant.");
+      if (participants.length === 0) return toast("Add at least one other participant");
 
-      // Auto-include payer if not in list
-      if (!participants.some(p => p.toLowerCase() === payerAddr.toLowerCase())) {
-        participants.push(payerAddr);
-      }
-
-      const addBtn = document.getElementById("addExpense");
-      setLoading(addBtn, true);
-      statusEl.textContent = "";
-      statusEl.className = "";
+      const btn = document.getElementById("addExpense");
+      setLoading(btn, true);
+      status.textContent = "";
+      status.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payerAddr, participants);
-        statusEl.textContent = "Waiting for confirmation...";
-        statusEl.className = "success";
-        await tx.wait();
-        
-        statusEl.innerHTML = `Expense recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View Tx</a>`;
-        statusEl.className = "success";
+        const tx = await contract.addExpense(amount, payer, participants); // ONLY 3 ARGS
+        status.textContent = "Confirming…";
+        status.className = "success";
+
+        const receipt = await tx.wait();
+
+        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
+        status.className = "success";
 
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
-        refreshBalances();
-      } catch (err) {
-        statusEl.textContent = "Failed: " + (err.reason || err.message);
-        statusEl.className = "error";
+        document.getElementById("expenseDesc").value = "";
+
+        window.lastExpenseDesc = desc;
+        toast(`Expense recorded: "${desc}"!`);
+        setTimeout(refreshBalances, 1500);
+      } catch (e) {
+        status.textContent = "Failed: " + (e.reason || e.message);
+        status.className = "error";
       } finally {
-        setLoading(addBtn, false);
+        setLoading(btn, false);
       }
     }
 
     async function settleWith(creditor) {
-      if (!contract || !account) return alert("Connect wallet first");
-
-      if (!confirm(`Settle with ${shortAddr(creditor)}? This will send USDC on Base.`)) return;
-
+      if (!confirm(`Settle with ${shortAddr(creditor)}?`)) return;
       try {
         const tx = await contract.settle(creditor);
-        alert("Settling... wait for confirmation");
+        toast("Settling…");
         await tx.wait();
-        alert(`Settled! Tx: https://basescan.org/tx/${tx.hash}`);
+        toast(`Settled! https://basescan.org/tx/${tx.hash}`);
         refreshBalances();
-      } catch (err) {
-        alert("Settle failed: " + (err.reason || err.message));
-      }
+      } catch (e) { toast("Settle error: " + (e.reason || e.message)); }
     }
 
     async function refreshBalances() {
-      const balancesEl = document.getElementById("balances");
-      const refreshBtn = document.getElementById("refreshBalances");
+      const el = document.getElementById("balances");
+      const btn = document.getElementById("refreshBalances");
 
-      if (!contract || !account) {
-        balancesEl.innerHTML = "Connect wallet first...";
+      if (!contract || !account) { el.innerHTML = "Connect wallet first…"; return; }
+
+      setLoading(btn, true);
+      el.innerHTML = "Loading…";
+
+      let creditors = [], amounts = [];
+      try {
+        [creditors, amounts] = await contract.getMyBalances();
+      } catch (e) {
+        console.warn("getMyBalances failed", e);
+        el.innerHTML = `<span class="error">Loading balances... (this may take a few seconds)</span>`;
+        setLoading(btn, false);
         return;
       }
 
-      setLoading(refreshBtn, true);
-      balancesEl.innerHTML = "Loading...";
-
-      try {
-        const [creditors, amounts] = await contract.getMyBalances();
-
-        if (!creditors || creditors.length === 0) {
-          balancesEl.innerHTML = "<em>No balances.</em>";
-          setLoading(refreshBtn, false);
-          return;
-        }
-
-        let output = "";
-        for (let i = 0; i < creditors.length; i++) {
-          const addr = creditors[i];
-          
-          // Skip self
-          if (addr.toLowerCase() === account.toLowerCase()) continue;
-
-          const raw = amounts[i].toString();
-          const isNegative = raw.startsWith("-");
-          const absRaw = isNegative ? raw.slice(1) : raw;
-          const absBN = ethers.BigNumber.from(absRaw);
-          const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
-
-          if (absBN.isZero()) continue;
-
-          const action = isNegative 
-            ? `<span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}`
-            : `<span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}`;
-
-          output += `
-            <div class="balance-item">
-              <span>${action}</span>
-              ${!isNegative ? `<button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>` : ''}
-            </div>`;
-        }
-
-        balancesEl.innerHTML = output || "<em>No balances.</em>";
-      } catch (err) {
-        console.error("refreshBalances error:", err);
-        balancesEl.innerHTML = "<span class='error'>Error loading balances.</span>";
-      } finally {
-        setLoading(refreshBtn, false);
+      if (!creditors || creditors.length === 0) {
+        el.innerHTML = "<em>No balances.</em>";
+        setLoading(btn, false);
+        return;
       }
+
+      let html = "";
+      const desc = window.lastExpenseDesc || "Expense";
+
+      for (let i = 0; i < creditors.length; i++) {
+        const addr = creditors[i];
+        if (addr.toLowerCase() === account.toLowerCase()) continue;
+
+        const raw = amounts[i].toString();
+        const positive = !raw.startsWith("-");
+        const absRaw = positive ? raw : raw.slice(1);
+        const absBN = ethers.BigNumber.from(absRaw);
+        const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+
+        if (absBN.isZero()) continue;
+
+        const tag = `<span class="tag">(${desc})</span>`;
+
+        if (positive) {
+          html += `<div class="balance-item">
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)} ${tag}
+                   </div>`;
+        } else {
+          html += `<div class="balance-item">
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)} ${tag}
+                     <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
+                   </div>`;
+        }
+      }
+
+      el.innerHTML = html || "<em>No balances.</em>";
+      setLoading(btn, false);
     }
 
-    // Event Listeners
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
-    // Auto-validate participants on blur
-    document.getElementById("participants").addEventListener("blur", function() {
+    document.getElementById("participants").addEventListener("blur", function () {
       const vals = this.value.split(",").map(a => a.trim());
       const valid = vals.filter(a => ethers.utils.isAddress(a));
       if (valid.length !== vals.length) {
-        alert("Invalid address(es) removed.");
+        toast("Invalid address(es) removed");
         this.value = valid.join(", ");
       }
     });
   </script>
 </body>
 </html>
-
