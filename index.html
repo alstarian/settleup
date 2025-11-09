@@ -476,6 +476,10 @@
           { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "address", "name": "debtor", "type": "address" },
+          { "internalType": "uint256", "name": "newAmount", "type": "uint256" }
+        ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [], "name": "getMyBalances", "outputs": [
           { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
           { "internalType": "int256[]", "name": "amounts", "type": "int256[]" },
