@@ -61,9 +61,6 @@
       animation-fill-mode: backwards;
     }
     
-    .card:nth-child(2) { animation-delay: 0.1s; }
-    .card:nth-child(3) { animation-delay: 0.2s; }
-    
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -198,6 +195,8 @@
     .btn-secondary {
       background: #f3f4f6;
       color: #374151;
+      width: auto;
+      padding: 10px 16px;
     }
     
     .btn-secondary:hover:not(:disabled) {
@@ -326,6 +325,7 @@
       font-size: 14px;
       font-weight: 600;
       min-width: 80px;
+      width: auto;
     }
     
     .btn-settle:hover {
@@ -385,12 +385,6 @@
     
     .info-banner strong {
       font-weight: 600;
-    }
-    
-    @media (max-width: 480px) {
-      body { padding: 12px; }
-      .card { padding: 20px; }
-      h1 { font-size: 28px; }
     }
   </style>
 </head>
@@ -458,24 +452,6 @@
       <div id="addExpenseStatus"></div>
     </div>
 
-    <div class="card" id="balancesCard" style="display:none;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 class="section-title" style="margin: 0;">
-          <span>💵</span> Balances
-        </h2>
-        <button id="refreshBalances" class="btn-secondary" style="width: auto; padding: 10px 16px;">
-          🔄
-        </button>
-      </div>
-      
-      <div id="balances">
-        <div class="empty-state">
-          <div class="empty-state-icon">📊</div>
-          <p>Connect wallet to view balances</p>
-        </div>
-      </div>
-    </div>
-
     <div class="card" id="adjustCard" style="display:none;">
       <h2 class="section-title">
         <span>🔧</span> Adjust Balance
@@ -500,6 +476,24 @@
       </button>
       
       <div id="adjustStatus"></div>
+    </div>
+
+    <div class="card" id="balancesCard" style="display:none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="section-title" style="margin: 0;">
+          <span>💵</span> Balances
+        </h2>
+        <button id="refreshBalances" class="btn-secondary">
+          🔄
+        </button>
+      </div>
+      
+      <div id="balances">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <p>Connect wallet to view balances</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -579,17 +573,16 @@
           }
         }
 
-        // Update UI
         document.getElementById("walletAddress").textContent = shortAddr(account);
         document.getElementById("payer").value = account;
         document.getElementById("walletStatus").style.display = "block";
         document.getElementById("addExpenseCard").style.display = "block";
-        document.getElementById("balancesCard").style.display = "block";
         document.getElementById("adjustCard").style.display = "block";
+        document.getElementById("balancesCard").style.display = "block";
         btn.style.display = "none";
 
         await initUSDC();
-        refreshBalances();
+        await refreshBalances();
 
         window.ethereum.on('accountsChanged', () => location.reload());
         window.ethereum.on('chainChanged', () => location.reload());
@@ -704,6 +697,55 @@
       }
     }
 
+    async function adjustBalanceSubmit() {
+      const debtorInput = document.getElementById("adjustDebtor").value.trim();
+      const amountInput = document.getElementById("adjustAmount").value.trim();
+      const statusEl = document.getElementById("adjustStatus");
+
+      if (!debtorInput || amountInput === "") {
+        return toast("⚠️ Please fill all fields");
+      }
+
+      if (!ethers.utils.isAddress(debtorInput)) {
+        return toast("⚠️ Invalid debtor address");
+      }
+
+      const amountFloat = parseFloat(amountInput);
+      if (isNaN(amountFloat) || amountFloat < 0) {
+        return toast("⚠️ Invalid amount");
+      }
+
+      const newAmount = ethers.utils.parseUnits(amountInput, 6);
+      const btn = document.getElementById("adjustBalance");
+      setLoading(btn, true);
+      statusEl.textContent = "";
+      statusEl.className = "";
+
+      try {
+        const tx = await contract.adjustBalance(debtorInput, newAmount);
+        
+        statusEl.textContent = "⏳ Updating balance...";
+        statusEl.className = "status-message success";
+
+        const receipt = await tx.wait();
+
+        statusEl.innerHTML = `✅ Balance updated! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Transaction</a>`;
+        statusEl.className = "status-message success";
+
+        document.getElementById("adjustDebtor").value = "";
+        document.getElementById("adjustAmount").value = "";
+
+        toast("✅ Balance adjusted!");
+        setTimeout(refreshBalances, 1500);
+      } catch (e) {
+        statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
+        statusEl.className = "status-message error";
+        toast("❌ Adjustment failed");
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
     async function settleWith(creditor) {
       if (!confirm(`Settle with ${shortAddr(creditor)}?`)) return;
       
@@ -719,6 +761,8 @@
         console.error(e);
       }
     }
+
+    async function refreshBalances() {
       const el = document.getElementById("balances");
       const btn = document.getElementById("refreshBalances");
 
@@ -811,7 +855,6 @@
       setLoading(btn, false);
     }
 
-    // Event Listeners
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
