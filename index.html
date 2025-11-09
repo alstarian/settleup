@@ -35,9 +35,9 @@
 
     <h3>Add Expense</h3>
     <input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
-    <input type="text" id="participants" placeholder="Participants (e.g. bob.base.eth, charlie.base.eth)" />
+    <input type="text" id="participants" placeholder="Participants (e.g. 0x123... or bob.base.eth)" />
     <label for="payer">Payer (who paid with card)</label>
-    <input type="text" id="payer" placeholder="e.g. alstarian.base.eth" />
+    <input type="text" id="payer" placeholder="e.g. 0x095c... or alstarian.base.eth" />
     <button id="addExpense" disabled>Record Expense</button>
     <p id="addExpenseStatus"></p>
   </div>
@@ -49,7 +49,6 @@
   </div>
 
   <script>
-    // YOUR NEW CONTRACT
     const contractAddress = "0xe96cE1AcEF0DCe364a9e7e751D46e1B6Da0cce40";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
@@ -77,20 +76,28 @@
         ], "stateMutability": "view", "type": "function" }
     ];
 
-    let provider, signer, contract, account, usdcContract;
+    let provider, signer, contract, account, usdcContract, ensSupported = true;
 
     function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
     function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
     function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
 
-    // Resolve .base.eth names
+    // ENS-ERROR PROOF: Resolve names with fallback
     async function resolveName(name) {
       if (ethers.utils.isAddress(name)) return name;
+      if (!ensSupported) return null; // Skip if ENS not supported
       if (!name.endsWith('.base.eth') && !name.endsWith('.eth')) return null;
       try {
         const addr = await provider.resolveName(name);
         if (addr && ethers.utils.isAddress(addr)) return addr;
-      } catch (e) { console.warn("ENS resolve failed:", name, e); }
+      } catch (e) {
+        if (e.message.includes("network doesn't support ENS")) {
+          ensSupported = false;
+          toast("ENS not supported on this network. Use full addresses (0x...)");
+        } else {
+          console.warn("ENS resolve failed:", name, e);
+        }
+      }
       return null;
     }
 
@@ -113,7 +120,17 @@
           return;
         }
 
-        const ensName = await provider.lookupAddress(account) || shortAddr(account);
+        // Test ENS support
+        try {
+          await provider.lookupAddress(account); // Simple test
+        } catch (e) {
+          if (e.message.includes("network doesn't support ENS")) {
+            ensSupported = false;
+            toast("ENS disabled on this network. Use full addresses.");
+          }
+        }
+
+        const ensName = ensSupported ? (await provider.lookupAddress(account) || shortAddr(account)) : shortAddr(account);
         document.getElementById("walletAddress").textContent = `Connected: ${ensName}`;
         document.getElementById("payer").value = ensName.includes('.base.eth') ? ensName : account;
 
@@ -257,7 +274,7 @@
 
         if (absBN.isZero()) continue;
 
-        const name = (await provider.lookupAddress(addr)) || shortAddr(addr);
+        const name = ensSupported ? (await provider.lookupAddress(addr)) || shortAddr(addr) : shortAddr(addr);
 
         if (positive) {
           html += `<div class="balance-item">
@@ -280,11 +297,11 @@
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
-    // Auto-resolve on blur
+    // Auto-resolve on blur (with ENS check)
     ['payer', 'participants'].forEach(id => {
       document.getElementById(id).addEventListener('blur', async function () {
         const val = this.value.trim();
-        if (!val || ethers.utils.isAddress(val)) return;
+        if (!val || ethers.utils.isAddress(val) || !ensSupported) return;
         const addr = await resolveName(val);
         if (addr) this.value = addr;
       });
