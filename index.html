@@ -475,6 +475,32 @@
         </div>
       </div>
     </div>
+
+    <div class="card" id="adjustCard" style="display:none;">
+      <h2 class="section-title">
+        <span>🔧</span> Adjust Balance
+      </h2>
+      
+      <div class="info-banner">
+        <strong>Note:</strong> Correct a balance if you recorded the wrong amount. Only you can adjust what others owe you.
+      </div>
+
+      <div class="input-group">
+        <label>Person (Who Owes You)</label>
+        <input type="text" id="adjustDebtor" placeholder="0x..." />
+      </div>
+
+      <div class="input-group">
+        <label>New Amount (USDC)</label>
+        <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
+      </div>
+
+      <button id="adjustBalance" class="btn-primary">
+        🔧 Update Balance
+      </button>
+      
+      <div id="adjustStatus"></div>
+    </div>
   </div>
 
   <script>
@@ -490,6 +516,10 @@
           { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "address", "name": "debtor", "type": "address" },
+          { "internalType": "uint256", "name": "newAmount", "type": "uint256" }
+        ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [], "name": "getMyBalances", "outputs": [
           { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
           { "internalType": "int256[]", "name": "amounts", "type": "int256[]" },
@@ -555,6 +585,7 @@
         document.getElementById("walletStatus").style.display = "block";
         document.getElementById("addExpenseCard").style.display = "block";
         document.getElementById("balancesCard").style.display = "block";
+        document.getElementById("adjustCard").style.display = "block";
         btn.style.display = "none";
 
         await initUSDC();
@@ -688,8 +719,6 @@
         console.error(e);
       }
     }
-
-    async function refreshBalances() {
       const el = document.getElementById("balances");
       const btn = document.getElementById("refreshBalances");
 
@@ -785,6 +814,7 @@
     // Event Listeners
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
+    document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
     document.getElementById("participants").addEventListener("blur", function () {
