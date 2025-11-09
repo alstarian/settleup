@@ -233,6 +233,7 @@
       cursor: pointer;
       transition: all 0.2s;
       color: #374151;
+      position: relative;
     }
     
     .contact-btn:hover {
@@ -246,6 +247,29 @@
       border-color: #3b82f6;
       color: #1e40af;
       font-weight: 600;
+    }
+    
+    .contact-btn .delete-icon {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      border: 2px solid white;
+    }
+    
+    .contact-btn:hover .delete-icon {
+      opacity: 1;
     }
     
     .add-contact-btn {
@@ -546,6 +570,7 @@
       const youBtn = document.createElement("button");
       youBtn.className = "contact-btn you";
       youBtn.textContent = "📍 You";
+      youBtn.style.pointerEvents = "auto";
       youBtn.onclick = (e) => {
         e.preventDefault();
         document.getElementById("payer").value = account;
@@ -559,7 +584,22 @@
         
         const btn = document.createElement("button");
         btn.className = "contact-btn";
+        btn.style.position = "relative";
+        
+        // Create delete icon
+        const deleteIcon = document.createElement("div");
+        deleteIcon.className = "delete-icon";
+        deleteIcon.textContent = "✕";
+        deleteIcon.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (confirm(`Delete ${name}?`)) {
+            deleteContact(addr);
+          }
+        };
+        
         btn.textContent = name;
+        btn.appendChild(deleteIcon);
         
         // Click to add to participants
         btn.onclick = (e) => {
@@ -574,19 +614,6 @@
           } else {
             toast("⚠️ Already added");
           }
-        };
-        
-        // Long press or right-click to delete
-        let touchTimer;
-        btn.ontouchstart = () => {
-          touchTimer = setTimeout(() => {
-            if (confirm(`Delete ${name}?`)) deleteContact(addr);
-          }, 800);
-        };
-        btn.ontouchend = btn.ontouchcancel = () => clearTimeout(touchTimer);
-        btn.oncontextmenu = (e) => {
-          e.preventDefault();
-          if (confirm(`Delete ${name}?`)) deleteContact(addr);
         };
         
         list.appendChild(btn);
