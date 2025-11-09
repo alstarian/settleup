@@ -418,6 +418,32 @@
       <div id="addExpenseStatus"></div>
     </div>
 
+    <div class="card" id="adjustCard" style="display:none;">
+      <h2 class="section-title">
+        <span>🔧</span> Adjust Balance
+      </h2>
+      
+      <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #1e40af; line-height: 1.5;">
+        <strong>Note:</strong> Correct a balance if you recorded the wrong amount. Only you can adjust what others owe you.
+      </div>
+
+      <div class="input-group">
+        <label>Person (Who Owes You)</label>
+        <input type="text" id="adjustDebtor" placeholder="Click a contact or enter address" />
+      </div>
+
+      <div class="input-group">
+        <label>New Amount (USDC)</label>
+        <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
+      </div>
+
+      <button id="adjustBalance" class="btn-primary">
+        🔧 Update Balance
+      </button>
+      
+      <div id="adjustStatus"></div>
+    </div>
+
     <div class="card" id="balancesCard" style="display:none;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 class="section-title" style="margin: 0;">
@@ -609,6 +635,7 @@
         document.getElementById("payer").value = account;
         document.getElementById("walletStatus").style.display = "block";
         document.getElementById("addExpenseCard").style.display = "block";
+        document.getElementById("adjustCard").style.display = "block";
         document.getElementById("balancesCard").style.display = "block";
         btn.style.display = "none";
 
@@ -742,6 +769,55 @@
       }
     }
 
+    async function adjustBalanceSubmit() {
+      const debtorInput = document.getElementById("adjustDebtor").value.trim();
+      const amountInput = document.getElementById("adjustAmount").value.trim();
+      const statusEl = document.getElementById("adjustStatus");
+
+      if (!debtorInput || amountInput === "") {
+        return toast("⚠️ Please fill all fields");
+      }
+
+      if (!ethers.utils.isAddress(debtorInput)) {
+        return toast("⚠️ Invalid debtor address");
+      }
+
+      const amountFloat = parseFloat(amountInput);
+      if (isNaN(amountFloat) || amountFloat < 0) {
+        return toast("⚠️ Invalid amount");
+      }
+
+      const newAmount = ethers.utils.parseUnits(amountInput, 6);
+      const btn = document.getElementById("adjustBalance");
+      btn.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "";
+
+      try {
+        const tx = await contract.adjustBalance(debtorInput, newAmount);
+        
+        statusEl.textContent = "⏳ Updating balance...";
+        statusEl.className = "status-message success";
+
+        const receipt = await tx.wait();
+
+        statusEl.innerHTML = `✅ Balance updated! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
+        statusEl.className = "status-message success";
+
+        document.getElementById("adjustDebtor").value = "";
+        document.getElementById("adjustAmount").value = "";
+
+        toast("✅ Balance adjusted!");
+        setTimeout(refreshBalances, 1500);
+      } catch (e) {
+        statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
+        statusEl.className = "status-message error";
+        toast("❌ Adjustment failed");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     async function settleWith(creditor) {
       const name = contacts[creditor.toLowerCase()] || shortAddr(creditor);
       if (!confirm(`Settle with ${name}?`)) return;
@@ -853,6 +929,7 @@
 
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
+    document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
     document.getElementById("refreshBalances").onclick = refreshBalances;
   </script>
 </body>
