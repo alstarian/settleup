@@ -13,14 +13,17 @@
     button { background: #2563eb; color: white; cursor: pointer; border: none; font-weight: bold; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .friend-btn { background: #e0e7ff; color: #4338ca; padding: 10px; margin: 6px; border-radius: 8px; cursor: pointer; font-size: 14px; display: inline-block; min-width: 80px; text-align: center; }
+    .friend-btn:hover { background: #c7d2fe; }
+    .friend-btn.you { background: #d1fae5; color: #065f46; }
     .success { color: #16a34a; font-weight: bold; }
     .error { color: #dc2626; }
     .balance-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
-    .balance-item:last-child { border-bottom: none; }
     .settle-btn { background: #10b981; color: white; padding: 6px 12px; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; }
     .settle-btn:hover { background: #059669; }
     .loading { opacity: 0.6; pointer-events: none; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; animation: fade 3s forwards; z-index: 1000; }
+    .tag { font-size: 12px; color: #6b7280; font-style: italic; margin-left: 6px; }
     @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
   </style>
 </head>
@@ -33,13 +36,21 @@
     <p id="usdcBalance"></p>
     <button id="approveUSDC" style="display:none; margin:10px 0;">Approve USDC for SettleUp</button>
 
-<h3>Add Expense</h3>
-<input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
-<input type="text" id="participants" placeholder="Participants (comma-separated 0x... addresses)" />
-<label for="payer">Payer (who paid with card)</label>
-<input type="text" id="payer" placeholder="Enter 0x... address" />
-<button id="addExpense" disabled>Record Expense</button>
-<p id="addExpenseStatus"></p>  </div>
+    <h3>Your Contacts (auto-saved)</h3>
+    <div id="friendList">Connect wallet to load contacts...</div>
+
+    <h3>Add Expense</h3>
+    <input type="tel" inputmode="decimal" step="0.01" id="amount" placeholder="Amount in USDC (e.g. 30.00)" />
+    <input type="text" id="participants" placeholder="Participants (click names above)" />
+    <label for="payer">Payer (who paid)</label>
+    <input type="text" id="payer" placeholder="Click your name above" />
+    
+    <label for="expenseDesc">Description (optional)</label>
+    <input type="text" id="expenseDesc" placeholder="e.g. Dinner at Sushi Place" />
+
+    <button id="addExpense" disabled>Record Expense</button>
+    <p id="addExpenseStatus"></p>
+  </div>
 
   <div class="card">
     <h3>Your Balances</h3>
@@ -51,7 +62,7 @@
     const contractAddress = "0xe96cE1AcEF0DCe364a9e7e751D46e1B6Da0cce40";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-    const contractABI = [
+    const contractABI = [ /* SAME AS BEFORE */ 
       { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "stateMutability": "nonpayable", "type": "constructor" },
       { "anonymous": false, "inputs": [
           { "indexed": true, "internalType": "address", "name": "payer", "type": "address" },
@@ -76,10 +87,73 @@
     ];
 
     let provider, signer, contract, account, usdcContract;
+    let contacts = {}; // { addr: "Bob" }
 
     function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
     function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
     function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
+
+    // Load contacts from browser
+    function loadContacts() {
+      const saved = localStorage.getItem("settleup-contacts");
+      if (saved) contacts = JSON.parse(saved);
+    }
+
+    // Save contacts
+    function saveContacts() {
+      localStorage.setItem("settleup-contacts", JSON.stringify(contacts));
+    }
+
+    // Add new contact
+    function addContact(addr, name) {
+      if (!name || name === addr) return;
+      contacts[addr.toLowerCase()] = name;
+      saveContacts();
+      renderFriends();
+    }
+
+    // Render friend buttons
+    function renderFriends() {
+      const list = document.getElementById("friendList");
+      list.innerHTML = "";
+      if (!account) return;
+
+      Object.entries(contacts).forEach(([addr, name]) => {
+        const btn = document.createElement("span");
+        btn.className = "friend-btn";
+        if (addr === account.toLowerCase()) btn.classList.add("you");
+        btn.textContent = name;
+        btn.onclick = () => {
+          if (addr === account.toLowerCase()) {
+            document.getElementById("payer").value = account;
+            toast(`Payer: ${name}`);
+          } else {
+            const current = document.getElementById("participants").value;
+            const addrs = current.split(",").map(a => a.trim()).filter(Boolean);
+            if (!addrs.includes(addr)) {
+              document.getElementById("participants").value = [...addrs, addr].join(", ");
+              toast(`Added: ${name}`);
+            }
+          }
+        };
+        list.appendChild(btn);
+      });
+
+      // Add "Add New Contact" button
+      const addBtn = document.createElement("span");
+      addBtn.className = "friend-btn";
+      addBtn.textContent = "+ Add Name";
+      addBtn.onclick = () => {
+        const addr = prompt("Enter wallet address:");
+        if (!ethers.utils.isAddress(addr)) return toast("Invalid address");
+        const name = prompt("Enter name:", shortAddr(addr));
+        if (name) {
+          addContact(addr, name);
+          toast(`Saved: ${name}`);
+        }
+      };
+      list.appendChild(addBtn);
+    }
 
     async function connectWallet() {
       if (!window.ethereum) return toast("Install MetaMask!");
@@ -103,15 +177,24 @@
         document.getElementById("walletAddress").textContent = `Connected: ${shortAddr(account)}`;
         document.getElementById("payer").value = account;
 
+        loadContacts();
+        if (!contacts[account.toLowerCase()]) {
+          const name = prompt("Your name?", "Me");
+          if (name) addContact(account, name);
+        }
+
         document.getElementById("addExpense").disabled = false;
         document.getElementById("refreshBalances").disabled = false;
 
+        renderFriends();
         await initUSDC();
         refreshBalances();
 
         window.ethereum.on('accountsChanged', () => location.reload());
         window.ethereum.on('chainChanged', () => location.reload());
-      } catch (e) { toast("Connect failed: " + (e.reason || e.message)); } finally { setLoading(btn, false); }
+      } catch (e) { 
+        toast("Connect failed. Use MetaMask on Base Mainnet.");
+      } finally { setLoading(btn, false); }
     }
 
     async function initUSDC() {
@@ -133,21 +216,21 @@
         toast("Approving USDC…");
         await tx.wait();
         btn.style.display = "none";
-        toast("USDC approved!");
-      } catch (e) { toast("Approval failed: " + (e.reason || e.message)); } finally { setLoading(btn, false); }
+        toast("Approved!");
+      } catch (e) { toast("Approval failed"); } finally { setLoading(btn, false); }
     };
 
     async function addExpense() {
       const amountInput = document.getElementById("amount").value.trim();
       const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
+      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
       const status = document.getElementById("addExpenseStatus");
 
       if (!amountInput || !payer || !participantsInput) return toast("Fill all fields");
-      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
+      if (!ethers.utils.isAddress(payer)) return toast("Invalid payer");
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
-
       const participants = participantsInput
         .split(",")
         .map(a => a.trim())
@@ -155,54 +238,51 @@
 
       if (participants.length === 0) return toast("Add at least one other participant");
 
-      // SILENTLY include payer in contract call
       const fullParticipants = [payer, ...participants];
-
       const btn = document.getElementById("addExpense");
       setLoading(btn, true);
-      status.textContent = "";
-      status.className = "";
 
       try {
         const tx = await contract.addExpense(amount, payer, fullParticipants);
         status.textContent = "Confirming…";
-        status.className = "success";
+        await tx.wait();
 
-        const receipt = await tx.wait();
-
-        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
-        status.className = "success";
-
+        status.innerHTML = `Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View</a>`;
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
+        document.getElementById("expenseDesc").value = "";
 
-        toast("Expense recorded! Loading balances...");
+        // Auto-save new names
+        participants.forEach(addr => {
+          if (!contacts[addr.toLowerCase()]) {
+            const name = prompt(`Name for ${shortAddr(addr)}?`, shortAddr(addr));
+            if (name && name !== shortAddr(addr)) addContact(addr, name);
+          }
+        });
+
+        window.lastExpenseDesc = desc;
+        toast(`Expense recorded: "${desc}"!`);
         setTimeout(refreshBalances, 1500);
       } catch (e) {
         status.textContent = "Failed: " + (e.reason || e.message);
         status.className = "error";
-      } finally {
-        setLoading(btn, false);
-      }
+      } finally { setLoading(btn, false); }
     }
 
     async function settleWith(creditor) {
-      if (!confirm(`Settle with ${shortAddr(creditor)}?`)) return;
+      if (!confirm("Settle now?")) return;
       try {
         const tx = await contract.settle(creditor);
         toast("Settling…");
         await tx.wait();
-        toast(`Settled! https://basescan.org/tx/${tx.hash}`);
+        toast("Settled!");
         refreshBalances();
-      } catch (e) { toast("Settle error: " + (e.reason || e.message)); }
+      } catch (e) { toast("Settle failed"); }
     }
 
     async function refreshBalances() {
       const el = document.getElementById("balances");
       const btn = document.getElementById("refreshBalances");
-
-      if (!contract || !account) { el.innerHTML = "Connect wallet first…"; return; }
-
       setLoading(btn, true);
       el.innerHTML = "Loading…";
 
@@ -210,19 +290,20 @@
       try {
         [creditors, amounts] = await contract.getMyBalances();
       } catch (e) {
-        console.warn("getMyBalances failed", e);
-        el.innerHTML = `<span class="error">Loading balances... (this may take a few seconds)</span>`;
+        el.innerHTML = "<span class='error'>Failed to load</span>";
         setLoading(btn, false);
         return;
       }
 
-      if (!creditors || creditors.length === 0) {
+      if (creditors.length === 0) {
         el.innerHTML = "<em>No balances.</em>";
         setLoading(btn, false);
         return;
       }
 
       let html = "";
+      const desc = window.lastExpenseDesc || "Expense";
+
       for (let i = 0; i < creditors.length; i++) {
         const addr = creditors[i];
         if (addr.toLowerCase() === account.toLowerCase()) continue;
@@ -230,18 +311,20 @@
         const raw = amounts[i].toString();
         const positive = !raw.startsWith("-");
         const absRaw = positive ? raw : raw.slice(1);
-        const absBN = ethers.BigNumber.from(absRaw);
-        const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+        const val = parseFloat(ethers.utils.formatUnits(absRaw, 6)).toFixed(2);
 
-        if (absBN.isZero()) continue;
+        if (parseFloat(val) === 0) continue;
+
+        const name = contacts[addr.toLowerCase()] || shortAddr(addr);
+        const tag = `<span class="tag">(${desc})</span>`;
 
         if (positive) {
           html += `<div class="balance-item">
-                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${name} ${tag}
                    </div>`;
         } else {
           html += `<div class="balance-item">
-                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${name} ${tag}
                      <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
                    </div>`;
         }
@@ -251,21 +334,9 @@
       setLoading(btn, false);
     }
 
-    // Event Listeners
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
-
-    // Validate addresses on blur
-    document.getElementById("participants").addEventListener("blur", function () {
-      const vals = this.value.split(",").map(a => a.trim());
-      const valid = vals.filter(a => ethers.utils.isAddress(a));
-      if (valid.length !== vals.length) {
-        toast("Invalid address(es) removed");
-        this.value = valid.join(", ");
-      }
-    });
   </script>
 </body>
 </html>
-
