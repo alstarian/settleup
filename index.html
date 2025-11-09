@@ -21,7 +21,6 @@
     .settle-btn:hover { background: #059669; }
     .loading { opacity: 0.6; pointer-events: none; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; animation: fade 3s forwards; z-index: 1000; }
-    .tag { font-size: 12px; color: #6b7280; font-style: italic; margin-left: 6px; }
     @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
   </style>
 </head>
@@ -39,10 +38,6 @@
     <input type="text" id="participants" placeholder="Participants (comma-separated 0x... addresses)" />
     <label for="payer">Payer (who paid with card)</label>
     <input type="text" id="payer" placeholder="Enter 0x... address" />
-    
-    <label for="expenseDesc">Expense Description</label>
-    <input type="text" id="expenseDesc" placeholder="e.g. Lunch at Chipotle, Cinema - Avengers" />
-
     <button id="addExpense" disabled>Record Expense</button>
     <p id="addExpenseStatus"></p>
   </div>
@@ -62,8 +57,7 @@
       { "anonymous": false, "inputs": [
           { "indexed": true, "internalType": "address", "name": "payer", "type": "address" },
           { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
-          { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" },
-          { "indexed": false, "internalType": "string", "name": "description", "type": "string" }
+          { "indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]" }
         ], "name": "ExpenseAdded", "type": "event" },
       { "anonymous": false, "inputs": [
           { "indexed": true, "internalType": "address", "name": "debtor", "type": "address" },
@@ -73,8 +67,7 @@
       { "inputs": [
           { "internalType": "uint256", "name": "amount", "type": "uint256" },
           { "internalType": "address", "name": "payer", "type": "address" },
-          { "internalType": "address[]", "name": "participants", "type": "address[]" },
-          { "internalType": "string", "name": "description", "type": "string" }
+          { "internalType": "address[]", "name": "participants", "type": "address[]" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [], "name": "getMyBalances", "outputs": [
@@ -149,10 +142,9 @@
       const amountInput = document.getElementById("amount").value.trim();
       const payer = document.getElementById("payer").value.trim();
       const participantsInput = document.getElementById("participants").value.trim();
-      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
       const status = document.getElementById("addExpenseStatus");
 
-      if (!amountInput || !payer || !participantsInput) return toast("Fill all required fields");
+      if (!amountInput || !payer || !participantsInput) return toast("Fill all fields");
       if (!ethers.utils.isAddress(payer)) return toast("Invalid payer address");
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
@@ -164,7 +156,7 @@
 
       if (participants.length === 0) return toast("Add at least one other participant");
 
-      // SILENTLY include payer
+      // SILENTLY include payer in contract call
       const fullParticipants = [payer, ...participants];
 
       const btn = document.getElementById("addExpense");
@@ -173,7 +165,7 @@
       status.className = "";
 
       try {
-        const tx = await contract.addExpense(amount, payer, fullParticipants, desc);
+        const tx = await contract.addExpense(amount, payer, fullParticipants);
         status.textContent = "Confirming…";
         status.className = "success";
 
@@ -184,9 +176,8 @@
 
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
-        document.getElementById("expenseDesc").value = "";
 
-        toast(`Expense recorded: "${desc}"! Loading balances...`);
+        toast("Expense recorded! Loading balances...");
         setTimeout(refreshBalances, 1500);
       } catch (e) {
         status.textContent = "Failed: " + (e.reason || e.message);
@@ -232,28 +223,6 @@
         return;
       }
 
-      // Fetch past events to get descriptions
-      const filter = contract.filters.ExpenseAdded();
-      const events = await contract.queryFilter(filter, 0, "latest");
-
-      // Map: creditor_debtor -> { amount, desc }
-      const balanceMap = {};
-
-      for (const ev of events) {
-        const payer = ev.args.payer;
-        const amount = ev.args.amount;
-        const participants = ev.args.participants;
-        const desc = ev.args.description || "Expense";
-        const share = amount / participants.length;
-
-        for (const p of participants) {
-          if (p.toLowerCase() === payer.toLowerCase()) continue;
-          const key = `${payer.toLowerCase()}_${p.toLowerCase()}`;
-          if (!balanceMap[key]) balanceMap[key] = { amount: 0, desc: desc };
-          balanceMap[key].amount += share;
-        }
-      }
-
       let html = "";
       for (let i = 0; i < creditors.length; i++) {
         const addr = creditors[i];
@@ -267,25 +236,13 @@
 
         if (absBN.isZero()) continue;
 
-        // Find description
-        let desc = "Expense";
-        if (positive) {
-          const key = `${account.toLowerCase()}_${addr.toLowerCase()}`;
-          desc = balanceMap[key]?.desc || "Expense";
-        } else {
-          const key = `${addr.toLowerCase()}_${account.toLowerCase()}`;
-          desc = balanceMap[key]?.desc || "Expense";
-        }
-
-        const tag = `<span class="tag">(${desc})</span>`;
-
         if (positive) {
           html += `<div class="balance-item">
-                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)} ${tag}
+                     <span style="color:#16a34a;">$${val} owed to you by</span> ${shortAddr(addr)}
                    </div>`;
         } else {
           html += `<div class="balance-item">
-                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)} ${tag}
+                     <span style="color:#dc2626;">You owe $${val} to</span> ${shortAddr(addr)}
                      <button class="settle-btn" onclick="settleWith('${addr}')">Settle</button>
                    </div>`;
         }
@@ -300,7 +257,7 @@
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("refreshBalances").onclick = refreshBalances;
 
-    // Validate addresses
+    // Validate addresses on blur
     document.getElementById("participants").addEventListener("blur", function () {
       const vals = this.value.split(",").map(a => a.trim());
       const valid = vals.filter(a => ethers.utils.isAddress(a));
