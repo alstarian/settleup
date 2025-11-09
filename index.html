@@ -13,9 +13,14 @@
     button { background: #2563eb; color: white; cursor: pointer; border: none; font-weight: bold; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
-    .friend-btn { background: #e0e7ff; color: #4338ca; padding: 10px; margin: 6px; border-radius: 8px; cursor: pointer; font-size: 14px; display: inline-block; min-width: 80px; text-align: center; }
+    .friend-btn { 
+      background: #e0e7ff; color: #4338ca; padding: 10px 14px; margin: 6px; border-radius: 8px; 
+      cursor: pointer; font-size: 14px; display: inline-block; min-width: 80px; text-align: center; 
+      position: relative; user-select: none;
+    }
     .friend-btn:hover { background: #c7d2fe; }
     .friend-btn.you { background: #d1fae5; color: #065f46; }
+    .friend-btn.delete { background: #fee2e2; color: #991b1b; }
     .success { color: #16a34a; font-weight: bold; }
     .error { color: #dc2626; }
     .balance-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
@@ -36,7 +41,7 @@
     <p id="usdcBalance"></p>
     <button id="approveUSDC" style="display:none; margin:10px 0;">Approve USDC for SettleUp</button>
 
-    <h3>Your Contacts (auto-saved)</h3>
+    <h3>Your Contacts (long-press to delete)</h3>
     <div id="friendList">Connect wallet to load contacts...</div>
 
     <h3>Add Expense</h3>
@@ -93,18 +98,15 @@
     function setLoading(el, loading) { loading ? el.classList.add('loading') || (el.disabled = true) : el.classList.remove('loading') || (el.disabled = false); }
     function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
 
-    // Load contacts from browser
     function loadContacts() {
       const saved = localStorage.getItem("settleup-contacts");
       if (saved) contacts = JSON.parse(saved);
     }
 
-    // Save contacts
     function saveContacts() {
       localStorage.setItem("settleup-contacts", JSON.stringify(contacts));
     }
 
-    // Add new contact
     function addContact(addr, name) {
       if (!name || name === addr) return;
       contacts[addr.toLowerCase()] = name;
@@ -112,7 +114,17 @@
       renderFriends();
     }
 
-    // Render friend buttons
+    function deleteContact(addr) {
+      if (addr === account.toLowerCase()) {
+        toast("Cannot delete yourself!");
+        return;
+      }
+      delete contacts[addr];
+      saveContacts();
+      renderFriends();
+      toast("Contact deleted");
+    }
+
     function renderFriends() {
       const list = document.getElementById("friendList");
       list.innerHTML = "";
@@ -123,30 +135,51 @@
         btn.className = "friend-btn";
         if (addr === account.toLowerCase()) btn.classList.add("you");
         btn.textContent = name;
-        btn.onclick = () => {
+
+        // Normal click = select
+        btn.onclick = (e) => {
+          e.stopPropagation();
           if (addr === account.toLowerCase()) {
             document.getElementById("payer").value = account;
             toast(`Payer: ${name}`);
           } else {
             const current = document.getElementById("participants").value;
             const addrs = current.split(",").map(a => a.trim()).filter(Boolean);
-            if (!addrs.includes(addr)) {
+            if (!addrs.map(a=>a.toLowerCase()).includes(addr)) {
               document.getElementById("participants").value = [...addrs, addr].join(", ");
               toast(`Added: ${name}`);
             }
           }
         };
+
+        // Long press / right click = delete
+        let timer;
+        btn.onmousedown = btn.ontouchstart = () => {
+          timer = setTimeout(() => {
+            if (confirm(`Delete ${name}?`)) {
+              deleteContact(addr);
+            }
+          }, 800);
+        };
+        btn.onmouseup = btn.ontouchend = btn.onmouseleave = btn.ontouchcancel = () => {
+          clearTimeout(timer);
+        };
+        btn.oncontextmenu = (e) => {
+          e.preventDefault();
+          if (confirm(`Delete ${name}?`)) deleteContact(addr);
+        };
+
         list.appendChild(btn);
       });
 
-      // Add "Add New Contact" button
+      // Add New Contact button
       const addBtn = document.createElement("span");
       addBtn.className = "friend-btn";
       addBtn.textContent = "+ Add Name";
       addBtn.onclick = () => {
-        const addr = prompt("Enter wallet address:");
+        const addr = prompt("Wallet address:");
         if (!ethers.utils.isAddress(addr)) return toast("Invalid address");
-        const name = prompt("Enter name:", shortAddr(addr));
+        const name = prompt("Name:", shortAddr(addr));
         if (name) {
           addContact(addr, name);
           toast(`Saved: ${name}`);
@@ -252,7 +285,6 @@
         document.getElementById("participants").value = "";
         document.getElementById("expenseDesc").value = "";
 
-        // Auto-save new names
         participants.forEach(addr => {
           if (!contacts[addr.toLowerCase()]) {
             const name = prompt(`Name for ${shortAddr(addr)}?`, shortAddr(addr));
