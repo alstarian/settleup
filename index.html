@@ -7,28 +7,26 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body {font-family:'Inter',sans-serif;background:#0f0f23;color:#e0e0ff;margin:0;padding:0;min-height:100vh;}
-    .container {max-width:480px;margin:0 auto;padding:20px 16px;}
-    .card {background:#1a1a2e;border-radius:24px;padding:28px;box-shadow:0 12px 40px rgba(0,0,0,0.6);border:1px solid #2a2a4e;}
-    .title {font-size:32px;font-weight:700;text-align:center;color:#ffffff;margin:20px 0 30px;background:linear-gradient(135deg,#ff6bcb,#6b7cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-    .connect-btn,.action-btn {background:linear-gradient(135deg,#ff6bcb,#6b7cff);color:white;border:none;padding:18px;border-radius:18px;font-weight:600;font-size:17px;width:100%;cursor:pointer;transition:all .2s;margin:20px 0;}
-    .connect-btn:hover,.action-btn:hover {transform:translateY(-2px);box-shadow:0 10px 20px rgba(107,124,255,0.4);}
-    .action-btn:disabled {background:#3a3a6e;cursor:not-allowed;opacity:0.7;}
-    .input-group {margin:24px 0;}
-    .input-label {font-size:15px;color:#a0a0ff;margin-bottom:10px;display:block;font-weight:500;}
-    input {width:100%;padding:18px 20px;background:#2a2a4e;border:1px solid #3a3a6e;border-radius:18px;color:white;font-size:18px;box-sizing:border-box;transition:all .2s;}
-    input:focus {outline:none;border-color:#6b7cff;box-shadow:0 0 0 4px rgba(107,124,255,0.3);}
-    .friend-list {display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:20px 0;}
-    .friend-btn {background:#2a2a4e;color:#c0c0ff;padding:12px 20px;border-radius:16px;cursor:pointer;font-size:15px;font-weight:500;min-width:90px;text-align:center;transition:all .2s;border:1px solid #3a3a6e;}
-    .friend-btn:hover {background:#3a3a6e;transform:translateY(-2px);}
+    body {font-family:'Inter',sans-serif;background:#0f0f23;color:#e0e0ff;margin:0;padding:20px;min-height:100vh;}
+    .container {max-width:420px;margin:40px auto;padding:0 16px;}
+    .card {background:#1a1a2e;border-radius:24px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.5);border:1px solid #2a2a4e;}
+    .title {font-size:28px;font-weight:700;text-align:center;color:#ffffff;margin-bottom:24px;background:linear-gradient(135deg,#ff6bcb,#6b7cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .connect-btn,.action-btn {background:linear-gradient(135deg,#ff6bcb,#6b7cff);color:white;border:none;padding:16px;border-radius:16px;font-weight:600;font-size:16px;width:100%;cursor:pointer;transition:all .2s;}
+    .connect-btn:hover,.action-btn:hover {transform:translateY(-2px);}
+    .action-btn:disabled {background:#3a3a6e;cursor:not-allowed;}
+    .input-group {margin:16px 0;}
+    .input-label {font-size:14px;color:#a0a0ff;margin-bottom:8px;display:block;}
+    input {width:100%;padding:14px 16px;background:#2a2a4e;border:1px solid #3a3a6e;border-radius:16px;color:white;font-size:16px;box-sizing:border-box;}
+    input:focus {outline:none;border-color:#6b7cff;box-shadow:0 0 0 3px rgba(107,124,255,0.3);}
+    .friend-btn {background:#2a2a4e;color:#c0c0ff;padding:10px 16px;margin:6px;border-radius:12px;cursor:pointer;font-size:14px;display:inline-block;min-width:80px;text-align:center;transition:all .2s;border:1px solid #3a3a6e;}
+    .friend-btn:hover {background:#3a3a6e;transform:translateY(-1px);}
     .friend-btn.you {background:#1e4d3a;border-color:#2e8b57;color:#90ee90;}
     .friend-btn.add {background:#1e3a3a;border-color:#008080;color:#40e0d0;}
-    .settle-btn {background:#10b981;color:white;padding:10px 20px;border-radius:14px;font-size:15px;border:none;cursor:pointer;font-weight:600;}
-    .balance-item {background:#2a2a4e;padding:20px;border-radius:18px;margin:14px 0;display:flex;justify-content:space-between;align-items:center;border:1px solid #3a3a6e;flex-wrap:wrap;gap:12px;}
-    .tag {font-size:13px;color:#8888cc;font-style:italic;}
-    .toast {position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:16px 32px;border-radius:18px;font-size:16px;box-shadow:0 12px 30px rgba(0,0,0,0.6);z-index:1000;animation:fade 3s forwards;}
+    .settle-btn {background:#10b981;color:white;padding:8px 16px;border-radius:12px;font-size:14px;border:none;cursor:pointer;}
+    .balance-item {background:#2a2a4e;padding:16px;border-radius:16px;margin:12px 0;display:flex;justify-content:space-between;align-items:center;border:1px solid #3a3a6e;}
+    .tag {font-size:12px;color:#8888cc;font-style:italic;}
+    .toast {position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:12px 24px;border-radius:16px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:1000;animation:fade 3s forwards;}
     @keyframes fade {0%,70%{opacity:1}100%{opacity:0}}
-    h3 {text-align:center;color:#ffffff;margin:20px 0 10px;font-size:20px;}
   </style>
 </head>
 <body>
@@ -37,13 +35,13 @@
 
     <div class="card">
       <button id="connectWallet" class="connect-btn">Connect Wallet</button>
-      <p id="walletAddress" style="text-align:center;margin:16px 0;font-weight:600;font-size:16px;"></p>
-      <p id="usdcBalance" style="text-align:center;color:#a0a0ff;font-size:16px;"></p>
+      <p id="walletAddress" style="text-align:center;margin:16px 0;font-weight:500;"></p>
+      <p id="usdcBalance" style="text-align:center;color:#a0a0ff;"></p>
       <button id="approveUSDC" class="action-btn" style="display:none;">Approve USDC</button>
 
       <div class="input-group">
         <div class="input-label">Your Contacts (long-press to delete)</div>
-        <div class="friend-list" id="friendList"></div>
+        <div id="friendList" style="margin:16px 0;text-align:center;"></div>
       </div>
 
       <div class="input-group">
@@ -67,13 +65,13 @@
       </div>
 
       <button id="addExpense" class="action-btn" disabled>Record Expense</button>
-      <p id="addExpenseStatus" style="text-align:center;margin-top:16px;font-size:15px;"></p>
+      <p id="addExpenseStatus" style="text-align:center;margin-top:12px;"></p>
     </div>
 
-    <div class="card" style="margin-top:40px;">
-      <h3>Your Balances</h3>
-      <button id="refreshBalances" class="action-btn" disabled>Refresh Balances</button>
-      <div id="balances" style="margin-top:24px;font-size:16px;">Connect wallet first...</div>
+    <div class="card" style="margin-top:32px;">
+      <h3 style="text-align:center;margin-bottom:16px;color:#ffffff;">Your Balances</h3>
+      <button id="refreshBalances" class="action-btn" disabled>Refresh</button>
+      <div id="balances" style="margin-top:20px;">Connect wallet first...</div>
     </div>
   </div>
 
@@ -105,7 +103,7 @@
       const list=document.getElementById("friendList"); list.innerHTML="";
       if(!account) return;
       Object.entries(contacts).forEach(([addr,name])=>{
-        const btn=document.createElement("div"); btn.className="friend-btn";
+        const btn=document.createElement("span"); btn.className="friend-btn";
         if(addr===account.toLowerCase()) btn.classList.add("you");
         btn.textContent=name;
         btn.onclick=e=>{e.stopPropagation();
@@ -124,7 +122,7 @@
         btn.oncontextmenu=e=>{e.preventDefault(); if(confirm(`Delete ${name}?`))deleteContact(addr);};
         list.appendChild(btn);
       });
-      const add=document.createElement("div"); add.className="friend-btn add"; add.textContent="+ Add";
+      const add=document.createElement("span"); add.className="friend-btn add"; add.textContent="+ Add";
       add.onclick=()=>{const a=prompt("Address:"); if(!ethers.utils.isAddress(a))return toast("Invalid"); const n=prompt("Name:",shortAddr(a)); if(n)addContact(a,n);};
       list.appendChild(add);
     }
@@ -162,14 +160,14 @@
     async function initUSDC(){
       usdcContract=new ethers.Contract(USDC,["function balanceOf(address) view returns(uint256)","function allowance(address,address) view returns(uint256)","function approve(address,uint256) returns(bool)"],signer);
       const bal=await usdcContract.balanceOf(account);
-      document.getElementById("usdcBalance").textContent=`USDC Balance: ${ethers.utils.formatUnits(bal,6)}`;
+      document.getElementById("usdcBalance").textContent=`USDC: ${ethers.utils.formatUnits(bal,6)}`;
       const allow=await usdcContract.allowance(account,contractAddress);
       if(allow.lt(ethers.utils.parseUnits("1000",6))) document.getElementById("approveUSDC").style.display="block";
     }
 
     document.getElementById("approveUSDC").onclick=async()=>{const b=document.getElementById("approveUSDC");b.disabled=true;
-      try{const tx=await usdcContract.approve(contractAddress,ethers.constants.MaxUint256);toast("Approving USDC…");await tx.wait();b.style.display="none";toast("Approved!");}
-      catch(e){toast("Approval failed");}finally{b.disabled=false;}
+      try{const tx=await usdcContract.approve(contractAddress,ethers.constants.MaxUint256);toast("Approving…");await tx.wait();b.style.display="none";toast("Approved!");}
+      catch(e){toast("Failed");}finally{b.disabled=false;}
     };
 
     async function addExpense(){
@@ -182,14 +180,14 @@
       if(!ethers.utils.isAddress(payer))return toast("Invalid payer");
       const amount=ethers.utils.parseUnits(amt,6);
       const participants=parts.split(",").map(a=>a.trim()).filter(a=>ethers.utils.isAddress(a)&&a.toLowerCase()!==payer.toLowerCase());
-      if(participants.length===0)return toast("Add at least one other participant");
+      if(participants.length===0)return toast("Add at least one other");
       const full=[payer,...participants];
       const btn=document.getElementById("addExpense"); btn.disabled=true;
       try{
         const tx=await contract.addExpense(amount,payer,full);
-        status.textContent="Confirming…"; status.style.color="#90ee90";
+        status.textContent="Confirming…"; status.style.color="#a0ffa0";
         await tx.wait();
-        status.innerHTML=`Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank" style="color:#6b7cff;text-decoration:underline;">View Tx</a>`;
+        status.innerHTML=`Recorded! <a href="https://basescan.org/tx/${tx.hash}" target="_blank" style="color:#6b7cff;">View</a>`;
         document.getElementById("amount").value="";
         document.getElementById("participants").value="";
         document.getElementById("expenseDesc").value="";
@@ -207,11 +205,11 @@
 
     async function refreshBalances(){
       const el=document.getElementById("balances");
-      const btn=document.getElementById("refreshBalances"); btn.disabled=true; el.innerHTML="Loading balances...";
+      const btn=document.getElementById("refreshBalances"); btn.disabled=true; el.innerHTML="Loading…";
       let creditors=[],amounts=[];
       try{[creditors,amounts]=await contract.getMyBalances();}
-      catch(e){el.innerHTML="<span style='color:#ff6b6b'>Failed to load balances</span>"; btn.disabled=false; return;}
-      if(creditors.length===0){el.innerHTML="<em>No balances yet.</em>"; btn.disabled=false; return;}
+      catch(e){el.innerHTML="<span style='color:#ff6b6b'>Failed</span>"; btn.disabled=false; return;}
+      if(creditors.length===0){el.innerHTML="<em>No balances.</em>"; btn.disabled=false; return;}
       let html=""; const desc=window.lastExpenseDesc||"Expense";
       for(let i=0;i<creditors.length;i++){
         const addr=creditors[i];
@@ -223,9 +221,9 @@
         const name=contacts[addr.toLowerCase()]||shortAddr(addr);
         const tag=`<span class="tag">(${desc})</span>`;
         if(pos){
-          html+=`<div class="balance-item"><div><span style="color:#4ade80;font-weight:600;">$${val}</span> owed to you by<br><strong>${name}</strong> ${tag}</div></div>`;
+          html+=`<div class="balance-item"><span style="color:#4ade80;">$${val} owed to you by</span> ${name} ${tag}</div>`;
         }else{
-          html+=`<div class="balance-item"><div><span style="color:#f87171;font-weight:600;">You owe $${val}</span> to<br><strong>${name}</strong> ${tag}</div><button class="settle-btn" onclick="settleWith('${addr}')">Settle</button></div>`;
+          html+=`<div class="balance-item"><span style="color:#f87171;">You owe $${val} to</span> ${name} ${tag}<button class="settle-btn" onclick="settleWith('${addr}')">Settle</button></div>`;
         }
       }
       el.innerHTML=html||"<em>No balances.</em>";
