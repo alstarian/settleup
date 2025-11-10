@@ -477,9 +477,6 @@
           🔄 Refresh
         </button>
       </div>
-      <div style="text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
-        Auto-refreshing every 5 seconds...
-      </div>
       
       <div id="balances">
         <div class="empty-state">
@@ -502,16 +499,17 @@
           { "internalType": "address[]", "name": "participants", "type": "address[]" },
           { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }, { "internalType": "string", "name": "category", "type": "string" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [
           { "internalType": "address", "name": "debtor", "type": "address" },
-          { "internalType": "uint256", "name": "newAmount", "type": "uint256" }
+          { "internalType": "uint256", "name": "newAmount", "type": "uint256" },
+          { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [], "name": "getMyBalances", "outputs": [
-          { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
-          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" },
-          { "internalType": "string[]", "name": "categories", "type": "string[]" }
-        ], "stateMutability": "view", "type": "function" }
+      { "inputs": [
+          { "internalType": "address", "name": "debtor", "type": "address" },
+          { "internalType": "address", "name": "creditor", "type": "address" },
+          { "internalType": "string", "name": "category", "type": "string" }
+        ], "name": "getBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
     ];
 
     let provider, signer, contract, account, usdcContract;
@@ -569,7 +567,6 @@
       
       if (!account) return;
       
-      // Show "You" button
       const youBtn = document.createElement("button");
       youBtn.className = "contact-btn you";
       youBtn.textContent = "📍 You";
@@ -581,15 +578,13 @@
       };
       list.appendChild(youBtn);
       
-      // Show all contacts
       Object.entries(contacts).forEach(([addr, name]) => {
-        if (addr === account.toLowerCase()) return; // Skip self
+        if (addr === account.toLowerCase()) return;
         
         const btn = document.createElement("button");
         btn.className = "contact-btn";
         btn.style.position = "relative";
         
-        // Create delete icon
         const deleteIcon = document.createElement("div");
         deleteIcon.className = "delete-icon";
         deleteIcon.textContent = "✕";
@@ -604,7 +599,6 @@
         btn.textContent = name;
         btn.appendChild(deleteIcon);
         
-        // Click to add to participants
         btn.onclick = (e) => {
           e.preventDefault();
           const participants = document.getElementById("participants").value.trim();
@@ -653,10 +647,8 @@
           }
         }
 
-        // Load existing contacts
         loadContacts();
         
-        // Add user to contacts if not already there
         if (!contacts[account.toLowerCase()]) {
           const userName = prompt("What's your name?", "Me");
           if (userName) {
@@ -664,7 +656,6 @@
           }
         }
 
-        // Update UI
         document.getElementById("walletAddress").textContent = shortAddr(account);
         document.getElementById("payer").value = account;
         document.getElementById("walletStatus").style.display = "block";
@@ -793,7 +784,7 @@
 
         toast(`✅ "${desc}" recorded!`);
         
-        setTimeout(refreshBalances, 1500);
+        setTimeout(refreshBalances, 800);
       } catch (e) {
         statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
         statusEl.className = "status-message error";
@@ -828,7 +819,7 @@
       statusEl.className = "";
 
       try {
-        const tx = await contract.adjustBalance(debtorInput, newAmount);
+        const tx = await contract.adjustBalance(debtorInput, newAmount, "Expense");
         
         statusEl.textContent = "⏳ Updating balance...";
         statusEl.className = "status-message success";
@@ -842,7 +833,7 @@
         document.getElementById("adjustAmount").value = "";
 
         toast("✅ Balance adjusted!");
-        setTimeout(refreshBalances, 1500);
+        setTimeout(refreshBalances, 800);
       } catch (e) {
         statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
         statusEl.className = "status-message error";
@@ -857,7 +848,7 @@
       if (!confirm(`Settle with ${name}?`)) return;
       
       try {
-        const tx = await contract.settle(creditor);
+        const tx = await contract.settle(creditor, "Expense");
         toast("⏳ Settling...");
         await tx.wait();
         toast("✅ Settled successfully!");
@@ -891,11 +882,81 @@
         </div>
       `;
 
-      let counterparts = [], amounts = [], categories = [];
       try {
-        [counterparts, amounts, categories] = await contract.getMyBalances();
+        const balancesMap = {};
+        
+        for (const contactAddr of Object.keys(contacts)) {
+          if (contactAddr === account.toLowerCase()) continue;
+          
+          try {
+            const debtToUs = await contract.getBalance(contactAddr, account, "Expense");
+            const debtToThem = await contract.getBalance(account, contactAddr, "Expense");
+            
+            if (!debtToUs.isZero() || !debtToThem.isZero()) {
+              balancesMap[contactAddr] = {
+                debtToUs: debtToUs,
+                debtToThem: debtToThem
+              };
+            }
+          } catch (e) {
+            console.error(`Error getting balance for ${contactAddr}:`, e);
+          }
+        }
+
+        const entries = Object.entries(balancesMap);
+        
+        if (entries.length === 0) {
+          el.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">✨</div>
+              <p>No active balances</p>
+            </div>
+          `;
+          btn.disabled = false;
+          return;
+        }
+
+        let html = '';
+
+        for (const [addr, data] of entries) {
+          const contactName = contacts[addr] || shortAddr(addr);
+          
+          if (!data.debtToUs.isZero()) {
+            const val = parseFloat(ethers.utils.formatUnits(data.debtToUs, 6)).toFixed(2);
+            html += `
+              <div class="balance-item">
+                <div class="balance-info">
+                  <div class="balance-amount positive">
+                    + ${val}
+                  </div>
+                  <div class="balance-name">${contactName} owes you</div>
+                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">Expense</div>
+                </div>
+              </div>
+            `;
+          }
+          
+          if (!data.debtToThem.isZero()) {
+            const val = parseFloat(ethers.utils.formatUnits(data.debtToThem, 6)).toFixed(2);
+            html += `
+              <div class="balance-item">
+                <div class="balance-info">
+                  <div class="balance-amount negative">
+                    - ${val}
+                  </div>
+                  <div class="balance-name">You owe ${contactName}</div>
+                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">Expense</div>
+                </div>
+                <button class="btn-settle" onclick="settleWith('${addr}')">Settle</button>
+              </div>
+            `;
+          }
+        }
+
+        el.innerHTML = html;
+        btn.disabled = false;
       } catch (e) {
-        console.error("getMyBalances failed", e);
+        console.error("Error refreshing balances:", e);
         el.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">⚠️</div>
@@ -903,75 +964,13 @@
           </div>
         `;
         btn.disabled = false;
-        return;
       }
-
-      if (!counterparts || counterparts.length === 0) {
-        el.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">✨</div>
-            <p>No balances yet</p>
-          </div>
-        `;
-        btn.disabled = false;
-        return;
-      }
-
-      let html = '';
-      let hasBalances = false;
-
-      for (let i = 0; i < counterparts.length; i++) {
-        const addr = counterparts[i];
-        const raw = amounts[i].toString();
-        const positive = !raw.startsWith("-");
-        const absRaw = positive ? raw : raw.slice(1);
-        const absBN = ethers.BigNumber.from(absRaw);
-        const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
-        const category = categories[i] || "Expense";
-        const contactName = contacts[addr.toLowerCase()] || shortAddr(addr);
-
-        if (absBN.isZero()) continue;
-        hasBalances = true;
-
-        html += `
-          <div class="balance-item">
-            <div class="balance-info">
-              <div class="balance-amount ${positive ? 'positive' : 'negative'}">
-                ${positive ? '+' : '-'} $${val}
-              </div>
-              <div class="balance-name">${contactName}</div>
-              <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">${category}</div>
-            </div>
-            ${!positive ? `<button class="btn-settle" onclick="settleWith('${addr}')">Settle</button>` : ''}
-          </div>
-        `;
-      }
-
-      if (!hasBalances) {
-        el.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">✨</div>
-            <p>No active balances</p>
-          </div>
-        `;
-      } else {
-        el.innerHTML = html;
-      }
-
-      btn.disabled = false;
     }
 
     document.getElementById("connectWallet").onclick = connectWallet;
     document.getElementById("addExpense").onclick = addExpense;
     document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
     document.getElementById("refreshBalances").onclick = refreshBalances;
-
-    // AUTO-REFRESH: Refresh balances every 5 seconds when connected
-    setInterval(() => {
-      if (account && contract) {
-        refreshBalances();
-      }
-    }, 5000);
   </script>
 </body>
 </html>
