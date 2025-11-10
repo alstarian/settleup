@@ -7,62 +7,388 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;color:#1f2937}
-    .container{max-width:480px;margin:0 auto}
-    .header{text-align:center;margin-bottom:32px}
-    .logo{font-size:48px;margin-bottom:8px}
-    h1{color:white;font-size:32px;font-weight:700;margin-bottom:8px;text-shadow:0 2px 10px rgba(0,0,0,.2)}
-    .subtitle{color:rgba(255,255,255,.9);font-size:14px}
-    .card{background:white;border-radius:24px;padding:28px;margin-bottom:20px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-    .wallet-status{display:flex;align-items:center;justify-content:space-between;padding:16px;background:#dcfce7;border-radius:16px;margin-bottom:24px;border:2px solid #86efac}
-    .wallet-info{gap:4px}
-    .wallet-address{font-weight:600;color:#15803d;font-size:14px}
-    .usdc-balance{font-size:12px;color:#16a34a}
-    .status-dot{width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-    .section-title{font-size:18px;font-weight:700;color:#111827;margin-bottom:16px}
-    .input-group{margin-bottom:20px}
-    label{display:block;font-size:13px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
-    input{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:12px;font-size:16px;background:#f9fafb}
-    input:focus{outline:none;border-color:#667eea;background:white;box-shadow:0 0 0 4px rgba(102,126,234,.1)}
-    button{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-    .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;box-shadow:0 4px 12px rgba(102,126,234,.4)}
-    .btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 20px rgba(102,126,234,.5)}
-    .btn-secondary{background:#f3f4f6;color:#374151;padding:12px 16px;width:auto;font-size:14px}
-    .btn-approve{background:#f59e0b;color:white;margin-bottom:16px}
-    button:disabled{opacity:.5;cursor:not-allowed}
-    .contacts-section{background:#f9fafb;border-radius:16px;padding:16px;margin-bottom:20px}
-    .contacts-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-    .contact-btn{background:white;border:2px solid #e5e7eb;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;position:relative}
-    .contact-btn:hover{border-color:#667eea;background:#f3f4f6}
-    .contact-btn.you{background:#dbeafe;border-color:#3b82f6;color:#1e40af;font-weight:600}
-    .contact-btn .delete-icon{position:absolute;top:-8px;right:-8px;background:#dc2626;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:0;border:2px solid white}
-    .contact-btn:hover .delete-icon{opacity:1}
-    .add-contact-btn{background:#10b981;color:white}
-    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:16px 24px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 10px 40px rgba(0,0,0,.3);z-index:1000}
-    .balance-item{display:flex;justify-content:space-between;align-items:center;padding:16px;background:#f9fafb;border:2px solid #e5e7eb;border-radius:12px;margin-bottom:12px}
-    .balance-item:hover{border-color:#d1d5db;background:white}
-    .balance-info{flex:1}
-    .balance-amount{font-size:18px;font-weight:700;margin-bottom:4px}
-    .balance-amount.positive{color:#15803d}
-    .balance-amount.negative{color:#dc2626}
-    .balance-name{font-size:14px;color:#6b7280;font-weight:500}
-    .btn-settle{padding:10px 20px;background:#10b981;color:white;border-radius:8px;font-size:14px;font-weight:600}
-    .empty-state{text-align:center;padding:40px 20px;color:#9ca3af}
-    .empty-state-icon{font-size:48px;margin-bottom:16px;opacity:.5}
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #1f2937;
+    }
+    
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    .logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    
+    h1 {
+      color: white;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.6s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .wallet-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      border: 2px solid #86efac;
+    }
+    
+    .wallet-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .wallet-address {
+      font-weight: 600;
+      color: #15803d;
+      font-size: 14px;
+    }
+    
+    .usdc-balance {
+      font-size: 12px;
+      color: #16a34a;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: #f9fafb;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+    
+    input::placeholder {
+      color: #9ca3af;
+    }
+    
+    button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      padding: 12px 16px;
+      width: auto;
+      margin: 0 6px 6px 0;
+      font-size: 14px;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #e5e7eb;
+    }
+    
+    .btn-approve {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      margin-bottom: 16px;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    
+    .contacts-section {
+      background: #f9fafb;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .contacts-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .contact-btn {
+      background: white;
+      border: 2px solid #e5e7eb;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #374151;
+      position: relative;
+    }
+    
+    .contact-btn:hover {
+      border-color: #667eea;
+      background: #f3f4f6;
+      transform: translateY(-1px);
+    }
+    
+    .contact-btn.you {
+      background: #dbeafe;
+      border-color: #3b82f6;
+      color: #1e40af;
+      font-weight: 600;
+    }
+    
+    .contact-btn .delete-icon {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      border: 2px solid white;
+    }
+    
+    .contact-btn:hover .delete-icon {
+      opacity: 1;
+    }
+    
+    .add-contact-btn {
+      background: #10b981;
+      color: white;
+      border: none;
+    }
+    
+    .add-contact-btn:hover {
+      background: #059669;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 1000;
+      animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+      max-width: 90%;
+    }
+    
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    
+    @keyframes toastOut {
+      to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    }
+    
+    .balance-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+    
+    .balance-item:hover {
+      border-color: #d1d5db;
+      background: white;
+    }
+    
+    .balance-info {
+      flex: 1;
+    }
+    
+    .balance-amount {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    
+    .balance-amount.positive {
+      color: #15803d;
+    }
+    
+    .balance-amount.negative {
+      color: #dc2626;
+    }
+    
+    .balance-name {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    .btn-settle {
+      padding: 10px 20px;
+      background: #10b981;
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      width: auto;
+    }
+    
+    .btn-settle:hover {
+      background: #059669;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+    }
+    
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Money Bag</div>
+      <div class="logo">💰</div>
       <h1>SettleUp</h1>
       <p class="subtitle">Split bills seamlessly on Base</p>
     </div>
 
     <div class="card">
-      <button id="connectWallet" class="btn-primary">Connect Wallet</button>
+      <button id="connectWallet" class="btn-primary">
+        🔗 Connect Wallet
+      </button>
+      
       <div id="walletStatus" style="display:none;">
         <div class="wallet-status">
           <div class="wallet-info">
@@ -71,197 +397,457 @@
           </div>
           <div class="status-dot"></div>
         </div>
-        <button id="approveUSDC" class="btn-approve" style="display:none;">Approve USDC</button>
+        
+        <button id="approveUSDC" class="btn-approve" style="display:none;">
+          ⚡ Approve USDC
+        </button>
+
         <div class="contacts-section">
-          <h2 class="section-title">Your Contacts</h2>
+          <h2 class="section-title" style="margin-bottom: 12px;">👥 Your Contacts</h2>
           <div class="contacts-list" id="contactsList"></div>
-          <button id="addContactBtn" class="add-contact-btn">+ Add Contact</button>
+          <button id="addContactBtn" class="add-contact-btn" style="width: 100%; padding: 12px;">+ Add Contact</button>
         </div>
       </div>
     </div>
 
     <div class="card" id="addExpenseCard" style="display:none;">
-      <h2 class="section-title">Add Expense</h2>
-      <div class="input-group"><label>Amount (USDC)</label><input type="number" step="0.01" id="amount" placeholder="30.00"/></div>
-      <div class="input-group"><label>Payer</label><input type="text" id="payer" placeholder="Click contact"/></div>
-      <div class="input-group"><label>Participants</label><input type="text" id="participants" placeholder="Click contacts"/></div>
-      <div class="input-group"><label>Category</label><input type="text" id="category" value="General"/></div>
-      <button id="addExpense" class="btn-primary">Record Expense</button>
+      <h2 class="section-title">
+        <span>📝</span> Add Expense
+      </h2>
+
+      <div class="input-group">
+        <label>Amount (USDC)</label>
+        <input type="number" inputmode="decimal" step="0.01" id="amount" placeholder="30.00" />
+      </div>
+
+      <div class="input-group">
+        <label>Payer (Who Paid)</label>
+        <input type="text" id="payer" placeholder="Click a contact or enter address" />
+      </div>
+
+      <div class="input-group">
+        <label>Participants (Who Owe)</label>
+        <input type="text" id="participants" placeholder="Click contacts or enter addresses" />
+      </div>
+
+      <div class="input-group">
+        <label>Description (Category)</label>
+        <input type="text" id="expenseDesc" placeholder="Dinner, Movie tickets, etc." />
+      </div>
+
+      <button id="addExpense" class="btn-primary">
+        💳 Record Expense
+      </button>
+      
       <div id="addExpenseStatus"></div>
     </div>
 
-    <div class="card" id="balancesCard" style="display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h2 class="section-title" style="margin:0;">Balances</h2>
-        <button id="refreshBalances" class="btn-secondary">Refresh</button>
+    <div class="card" id="adjustCard" style="display:none;">
+      <h2 class="section-title">
+        <span>🔧</span> Adjust Balance
+      </h2>
+      
+      <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #1e40af; line-height: 1.5;">
+        <strong>Note:</strong> Correct a balance if you recorded the wrong amount. Only you can adjust what others owe you.
       </div>
+
+      <div class="input-group">
+        <label>Person (Who Owes You)</label>
+        <input type="text" id="adjustDebtor" placeholder="Click a contact or enter address" />
+      </div>
+
+      <div class="input-group">
+        <label>Category</label>
+        <input type="text" id="adjustCategory" placeholder="e.g., Dinner, Expense" />
+      </div>
+
+      <div class="input-group">
+        <label>New Amount (USDC)</label>
+        <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
+      </div>
+
+      <button id="adjustBalance" class="btn-primary">
+        🔧 Update Balance
+      </button>
+      
+      <div id="adjustStatus"></div>
+    </div>
+
+    <div class="card" id="balancesCard" style="display:none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="section-title" style="margin: 0;">
+          <span>💵</span> Balances
+        </h2>
+        <button id="refreshBalances" class="btn-secondary">
+          🔄 Refresh
+        </button>
+      </div>
+      <div style="text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
+        Auto-refreshing every 10 seconds...
+      </div>
+      
       <div id="balances">
-        <div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet</p></div>
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <p>Connect wallet to view balances</p>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const contractAddress = "0x4d473c60224a7c098f5cc0c0a0ac3f02c43c2316"; // YOUR NEW PROXY
+    // NEW PROXY ADDRESS
+    const contractAddress = "0x4d473c60224a7c098f5cc0c0a0ac3f02c43c2316";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-    const abi = [
-      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"},{"internalType":"string","name":"category","type":"string"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"uint256","name":"newAmount","type":"uint256"},{"internalType":"string","name":"category","type":"string"}],"name":"adjustBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address[]","name":"counterparts","type":"address[]"},{"internalType":"string[]","name":"categories","type":"string[]"}],"name":"getMyBalances","outputs":[{"internalType":"int256[]","name":"amounts","type":"int256[]"}],"stateMutability":"view","type":"function"}
+    // UPDATED ABI FOR NEW CONTRACT
+    const contractABI = [
+      { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "address", "name": "payer", "type": "address" },
+          { "internalType": "address[]", "name": "participants", "type": "address[]" },
+          { "internalType": "string", "name": "category", "type": "string" }
+        ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "address", "name": "creditor", "type": "address" },
+          { "internalType": "string", "name": "category", "type": "string" }
+        ], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "address", "name": "debtor", "type": "address" },
+          { "internalType": "uint256", "name": "newAmount", "type": "uint256" },
+          { "internalType": "string", "name": "category", "type": "string" }
+        ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [
+          { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
+          { "internalType": "string[]", "name": "categories", "type": "string[]" }
+        ], "name": "getMyBalances", "outputs": [
+          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
+        ], "stateMutability": "view", "type": "function" },
+      { "inputs": [
+          { "internalType": "address", "name": "debtor", "type": "address" },
+          { "internalType": "address", "name": "creditor", "type": "address" },
+          { "internalType": "string", "name": "category", "type": "string" }
+        ], "name": "getBalance", "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ], "stateMutability": "view", "type": "function" }
     ];
 
-    let provider, signer, contract, account, usdc;
+    let provider, signer, contract, account, usdcContract;
     let contacts = {};
-    let counterparts = [];
-    let categories = ["General"];
 
-    function short(a){return a.slice(0,6)+'...'+a.slice(-4)}
-    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
-
-    function loadContacts(){const s=localStorage.getItem("settleup-contacts");if(s)contacts=JSON.parse(s)}
-    function saveContacts(){localStorage.setItem("settleup-contacts",JSON.stringify(contacts))}
-
-    function renderContacts(){
-      const list=document.getElementById("contactsList");list.innerHTML="";
-      const you=document.createElement("button");you.className="contact-btn you";you.textContent="You";
-      you.onclick=()=>{document.getElementById("payer").value=account;toast("Payer: You")};list.appendChild(you);
-      Object.entries(contacts).forEach(([a,n])=>{
-        if(a===account.toLowerCase())return;
-        const b=document.createElement("button");b.className="contact-btn";b.textContent=n;
-        b.onclick=()=>{const p=document.getElementById("participants");p.value=p.value?(p.value+", "+a):a;toast("Added "+n)};
-        list.appendChild(b);
+    function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
+    
+    function toast(msg) { 
+      const el = document.createElement('div'); 
+      el.className = 'toast'; 
+      el.textContent = msg; 
+      document.body.appendChild(el); 
+      setTimeout(() => el.remove(), 3000); 
+    }
+    
+    function loadContacts() {
+      const stored = localStorage.getItem("settleup-contacts");
+      if (stored) {
+        try {
+          contacts = JSON.parse(stored);
+        } catch(e) {
+          console.error("Failed to load contacts", e);
+          contacts = {};
+        }
+      }
+    }
+    
+    function saveContacts() {
+      localStorage.setItem("settleup-contacts", JSON.stringify(contacts));
+    }
+    
+    function addContact(address, name) {
+      const addr = address.toLowerCase();
+      if (!name || name.trim() === "") return toast("⚠️ Name required");
+      contacts[addr] = name.trim();
+      saveContacts();
+      renderContacts();
+      toast(`✅ Added ${name}`);
+    }
+    
+    function deleteContact(address) {
+      const addr = address.toLowerCase();
+      if (addr === account.toLowerCase()) {
+        return toast("❌ Can't delete yourself");
+      }
+      delete contacts[addr];
+      saveContacts();
+      renderContacts();
+      toast("✅ Deleted");
+    }
+    
+    function renderContacts() {
+      const list = document.getElementById("contactsList");
+      list.innerHTML = "";
+      
+      if (!account) return;
+      
+      // Show "You" button
+      const youBtn = document.createElement("button");
+      youBtn.className = "contact-btn you";
+      youBtn.textContent = "📍 You";
+      youBtn.style.pointerEvents = "auto";
+      youBtn.onclick = (e) => {
+        e.preventDefault();
+        document.getElementById("payer").value = account;
+        toast(`✅ Payer: You`);
+      };
+      list.appendChild(youBtn);
+      
+      // Show all contacts
+      Object.entries(contacts).forEach(([addr, name]) => {
+        if (addr === account.toLowerCase()) return; // Skip self
+        
+        const btn = document.createElement("button");
+        btn.className = "contact-btn";
+        btn.style.position = "relative";
+        
+        // Create delete icon
+        const deleteIcon = document.createElement("div");
+        deleteIcon.className = "delete-icon";
+        deleteIcon.textContent = "✕";
+        deleteIcon.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (confirm(`Delete ${name}?`)) {
+            deleteContact(addr);
+          }
+        };
+        
+        btn.textContent = name;
+        btn.appendChild(deleteIcon);
+        
+        // Click to add to participants
+        btn.onclick = (e) => {
+          e.preventDefault();
+          const participants = document.getElementById("participants").value.trim();
+          const arr = participants ? participants.split(",").map(x => x.trim()) : [];
+          
+          if (!arr.map(x => x.toLowerCase()).includes(addr)) {
+            arr.push(addr);
+            document.getElementById("participants").value = arr.join(", ");
+            toast(`✅ Added ${name}`);
+          } else {
+            toast("⚠️ Already added");
+          }
+        };
+        
+        list.appendChild(btn);
       });
     }
 
-    async function connectWallet(){
-      if(!window.ethereum)return toast("MetaMask required");
-      const btn=document.getElementById("connectWallet");btn.disabled=true;
-      try{
-        provider=new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts",[]);
-        signer=provider.getSigner();account=await signer.getAddress();
-        contract=new ethers.Contract(contractAddress,abi,signer);
+    async function connectWallet() {
+      if (!window.ethereum) return toast("⚠️ Please install MetaMask!");
+      
+      const btn = document.getElementById("connectWallet");
+      btn.disabled = true;
+      
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        account = await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        const net=await provider.getNetwork();
-        if(net.chainId!==8453){
-          await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x2105'}]});
-          location.reload();return;
-        }
-
-        loadContacts();
-        if(!contacts[account.toLowerCase()]){
-          const n=prompt("Your name?","Me");
-          if(n){contacts[account.toLowerCase()]=n;saveContacts();}
-        }
-
-        document.getElementById("walletAddress").textContent=short(account);
-        document.getElementById("payer").value=account;
-        document.getElementById("walletStatus").style.display="block";
-        document.getElementById("addExpenseCard").style.display="block";
-        document.getElementById("balancesCard").style.display="block";
-        btn.style.display="none";
-
-        renderContacts();await initUSDC();await loadAllData();await refreshBalances();
-        toast("Connected!");
-      }catch(e){toast("Failed");console.error(e)}finally{btn.disabled=false}
-    }
-
-    async function initUSDC(){
-      usdc=new ethers.Contract(USDC,["function balanceOf(address) view returns (uint256)","function allowance(address,address) view returns (uint256)","function approve(address,uint256) returns (bool)"],signer);
-      const b=await usdc.balanceOf(account);
-      document.getElementById("usdcBalance").textContent=`${ethers.utils.formatUnits(b,6)} USDC`;
-      const a=await usdc.allowance(account,contractAddress);
-      if(a.lt(ethers.utils.parseUnits("1000",6)))document.getElementById("approveUSDC").style.display="block";
-    }
-
-    document.getElementById("approveUSDC").onclick=async()=>{const b=document.getElementById("approveUSDC");b.disabled=true;
-      try{const tx=await usdc.approve(contractAddress,ethers.constants.MaxUint256);toast("Approving...");await tx.wait();b.style.display="none";toast("Approved!")}
-      catch(e){toast("Failed")}finally{b.disabled=false}};
-
-    document.getElementById("addContactBtn").onclick=()=>{const a=prompt("Address:");if(!ethers.utils.isAddress(a))return toast("Invalid");const n=prompt("Name:");if(n){contacts[a.toLowerCase()]=n;saveContacts();renderContacts();toast("Added")}};
-
-    async function loadAllData(){
-      try{
-        const events=await contract.queryFilter("*",0,"latest");
-        const addrSet=new Set(); const catSet=new Set(["General"]);
-        events.forEach(e=>{
-          if(e.args.payer)addrSet.add(e.args.payer);
-          if(e.args.participants)e.args.participants.forEach(p=>addrSet.add(p));
-          if(e.args.creditor)addrSet.add(e.args.creditor);
-          if(e.args.debtor)addrSet.add(e.args.debtor);
-          if(e.args.category)catSet.add(e.args.category);
-        });
-        // THIS LINE IS THE ONLY FIX YOU EVER NEEDED
-        counterparts = Array.from(addrSet).filter(a => a.toLowerCase() !== account.toLowerCase());
-        categories = Array.from(catSet);
-      }catch(e){counterparts=[];categories=["General"]}
-    }
-
-    async function refreshBalances(){
-      const el=document.getElementById("balances");
-      if(!account){el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet</p></div>`;return;}
-      if(counterparts.length===0){el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No expenses with others yet</p></div>`;return;}
-
-      el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Hourglass</div><p>Loading...</p></div>`;
-      try{
-        const amounts=await contract.getMyBalances(counterparts,categories);
-        let html=''; let i=0;
-        for(const addr of counterparts){
-          for(const cat of categories){
-            const raw=amounts[i++].toString();
-            const pos=!raw.startsWith("-");
-            const abs=pos?raw:raw.slice(1);
-            if(ethers.BigNumber.from(abs).isZero())continue;
-            const val=parseFloat(ethers.utils.formatUnits(abs,6)).toFixed(2);
-            const name=contacts[addr.toLowerCase()]||short(addr);
-            html+=`<div class="balance-item">
-              <div class="balance-info">
-                <div class="balance-amount ${pos?'positive':'negative'}">${pos?'+' : '-'} $${val}</div>
-                <div class="balance-name">${name} • ${cat}</div>
-              </div>
-              ${!pos?`<button class="btn-settle" onclick="settle('${addr}','${cat}')">Settle</button>`:''}
-            </div>`;
+        const net = await provider.getNetwork();
+        if (net.chainId !== 8453) {
+          toast("⚠️ Switching to Base Mainnet...");
+          try {
+            await window.ethereum.request({ 
+              method: 'wallet_switchEthereumChain', 
+              params: [{ chainId: '0x2105' }] 
+            });
+            location.reload();
+            return;
+          } catch (e) {
+            toast("❌ Please switch to Base Mainnet manually");
+            btn.disabled = false;
+            return;
           }
         }
-        el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>All settled!</p></div>`;
-      }catch(e){
+
+        // Load existing contacts
+        loadContacts();
+        
+        // Add user to contacts if not already there
+        if (!contacts[account.toLowerCase()]) {
+          const userName = prompt("What's your name?", "Me");
+          if (userName) {
+            addContact(account, userName);
+          }
+        }
+
+        // Update UI
+        document.getElementById("walletAddress").textContent = shortAddr(account);
+        document.getElementById("payer").value = account;
+        document.getElementById("walletStatus").style.display = "block";
+        document.getElementById("addExpenseCard").style.display = "block";
+        document.getElementById("adjustCard").style.display = "block";
+        document.getElementById("balancesCard").style.display = "block";
+        btn.style.display = "none";
+
+        renderContacts();
+        await initUSDC();
+        await refreshBalances();
+
+        window.ethereum.on('accountsChanged', () => location.reload());
+        window.ethereum.on('chainChanged', () => location.reload());
+        
+        toast("✅ Connected successfully!");
+      } catch (e) { 
+        toast("❌ Connection failed");
         console.error(e);
-        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Error: ${e.message.slice(0,80)}</p></div>`;
+      } finally { 
+        btn.disabled = false; 
       }
     }
 
-    window.settle=async(creditor,cat)=>{
-      if(!confirm(`Settle ${cat} with ${contacts[creditor.toLowerCase()]||short(creditor)}?`))return;
-      try{const tx=await contract.settle(creditor,cat);toast("Settling...");await tx.wait();toast("Settled!");await loadAllData();refreshBalances();}
-      catch(e){toast("Failed");console.error(e)}
-    };
+    async function initUSDC() {
+      usdcContract = new ethers.Contract(USDC, [
+        "function balanceOf(address) view returns (uint256)",
+        "function allowance(address,address) view returns (uint256)",
+        "function approve(address,uint256) returns (bool)"
+      ], signer);
+      
+      const bal = await usdcContract.balanceOf(account);
+      document.getElementById("usdcBalance").textContent = `💵 ${ethers.utils.formatUnits(bal, 6)} USDC`;
+      
+      const allowance = await usdcContract.allowance(account, contractAddress);
+      if (allowance.lt(ethers.utils.parseUnits("1000", 6))) {
+        document.getElementById("approveUSDC").style.display = "block";
+      }
+    }
 
-    document.getElementById("addExpense").onclick=async()=>{
-      const amt=document.getElementById("amount").value.trim();
-      const payer=document.getElementById("payer").value.trim();
-      const parts=document.getElementById("participants").value.trim();
-      const cat=document.getElementById("category").value.trim()||"General";
-      if(!amt||!payer||!parts)return toast("Fill all");
-      const amount=ethers.utils.parseUnits(amt,6);
-      const participants=[...new Set(parts.split(",").map(a=>a.trim()).filter(a=>ethers.utils.isAddress(a)&&a.toLowerCase()!==payer.toLowerCase()))];
-      if(participants.length===0)return toast("Need participants");
-      const btn=document.getElementById("addExpense");btn.disabled=true;
-      try{
-        const tx=await contract.addExpense(amount,payer,participants,cat);
-        document.getElementById("addExpenseStatus").textContent="Confirming...";
+    document.getElementById("approveUSDC").onclick = async () => {
+      const btn = document.getElementById("approveUSDC");
+      btn.disabled = true;
+      
+      try {
+        const tx = await usdcContract.approve(contractAddress, ethers.constants.MaxUint256);
+        toast("⏳ Approving USDC...");
         await tx.wait();
-        document.getElementById("addExpenseStatus").innerHTML=`Done! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View</a>`;
-        document.getElementById("amount").value="";document.getElementById("participants").value="";
-        toast("Recorded!");
-        await loadAllData();refreshBalances();
-      }catch(e){document.getElementById("addExpenseStatus").textContent="Failed";toast("Tx failed")}
-      finally{btn.disabled=false}
+        btn.style.display = "none";
+        toast("✅ USDC approved!");
+        await initUSDC();
+      } catch (e) { 
+        toast("❌ Approval failed");
+        console.error(e);
+      } finally { 
+        btn.disabled = false; 
+      }
     };
 
-    document.getElementById("connectWallet").onclick=connectWallet;
-    document.getElementById("refreshBalances").onclick=refreshBalances;
-  </script>
-</body>
-</html>
+    document.getElementById("addContactBtn").onclick = () => {
+      const addr = prompt("Address (0x...):");
+      if (!addr) return;
+      
+      if (!ethers.utils.isAddress(addr)) {
+        return toast("❌ Invalid address");
+      }
+      
+      const name = prompt("Name for this contact:");
+      if (name) {
+        addContact(addr, name);
+      }
+    };
+
+    async function addExpense() {
+      const amountInput = document.getElementById("amount").value.trim();
+      const payer = document.getElementById("payer").value.trim();
+      const participantsInput = document.getElementById("participants").value.trim();
+      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
+      const statusEl = document.getElementById("addExpenseStatus");
+
+      if (!amountInput || !payer || !participantsInput) {
+        return toast("⚠️ Please fill all required fields");
+      }
+      
+      if (!ethers.utils.isAddress(payer)) {
+        return toast("⚠️ Invalid payer address");
+      }
+
+      const amountFloat = parseFloat(amountInput);
+      if (isNaN(amountFloat) || amountFloat <= 0) {
+        return toast("⚠️ Invalid amount");
+      }
+
+      const amount = ethers.utils.parseUnits(amountInput, 6);
+
+      const participants = [...new Set(
+        participantsInput
+          .split(",")
+          .map(a => a.trim())
+          .filter(a => ethers.utils.isAddress(a) && a.toLowerCase() !== payer.toLowerCase())
+      )];
+
+      if (participants.length === 0) {
+        return toast("⚠️ Add at least one participant");
+      }
+
+      const btn = document.getElementById("addExpense");
+      btn.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "";
+
+      try {
+        const tx = await contract.addExpense(amount, payer, participants, desc);
+        
+        statusEl.textContent = "⏳ Confirming transaction...";
+        statusEl.className = "status-message success";
+
+        const receipt = await tx.wait();
+
+        statusEl.innerHTML = `✅ Expense recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
+        statusEl.className = "status-message success";
+
+        // Save category to localStorage
+        const storedCategories = localStorage.getItem("settleup-categories");
+        let categories = [];
+        if (storedCategories) {
+          try {
+            categories = JSON.parse(storedCategories);
+          } catch(e) {}
+        }
+        if (!categories.includes(desc)) {
+          categories.push(desc);
+          localStorage.setItem("settleup-categories", JSON.stringify(categories));
+        }
+
+        document.getElementById("amount").value = "";
+        document.getElementById("participants").value = "";
+        document.getElementById("expenseDesc").value = "";
+
+        toast(`✅ "${desc}" recorded!`);
+        
+        setTimeout(refreshBalances, 1500);
+      } catch (e) {
+        statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
+        statusEl.className = "status-message error";
+        toast("❌ Transaction failed");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function adjustBalanceSubmit() {
+      const debtorInput = document.getElementById("adjustDebtor").value.trim();
+      const amountInput = document.getElementById("adjustAmount").value.trim();
+      const category = document.getElementById("adjustCategory").value.trim() || "Expense";
+      const statusEl = document.getElementById("adjustStatus");
+
+      if (!debtorInput || amountInput === "") {
+        return toast("⚠️ Please fill all fields");
+      }
+
+      if (!ethers.utils.isAddress(debtorInput)) {
+        return toast("⚠️ Invalid debtor address");
+      }
+
+      const amountFloat = parseFloat(amountInput);
+      if (isNaN(amountFloat) || amountFloat < 0) {
