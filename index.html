@@ -884,13 +884,30 @@
 
       try {
         const balancesMap = {};
+        const category = "Expense"; // Make sure this matches what you used when adding expenses
         
-        for (const contactAddr of Object.keys(contacts)) {
-          if (contactAddr === account.toLowerCase()) continue;
+        const contactAddrs = Object.keys(contacts);
+        
+        if (contactAddrs.length === 0) {
+          el.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">ℹ️</div>
+              <p>Add contacts to view balances</p>
+            </div>
+          `;
+          btn.disabled = false;
+          return;
+        }
+        
+        for (const contactAddr of contactAddrs) {
+          if (contactAddr.toLowerCase() === account.toLowerCase()) continue;
           
           try {
-            const debtToUs = await contract.getBalance(contactAddr, account, "Expense");
-            const debtToThem = await contract.getBalance(account, contactAddr, "Expense");
+            // Query balances - try both directions with the same category
+            const debtToUs = await contract.getBalance(contactAddr, account, category);
+            const debtToThem = await contract.getBalance(account, contactAddr, category);
+            
+            console.log(`Balance for ${contactAddr}: We owe them: ${debtToThem.toString()}, They owe us: ${debtToUs.toString()}`);
             
             if (!debtToUs.isZero() || !debtToThem.isZero()) {
               balancesMap[contactAddr] = {
@@ -899,7 +916,7 @@
               };
             }
           } catch (e) {
-            console.error(`Error getting balance for ${contactAddr}:`, e);
+            console.warn(`Could not get balance for ${contactAddr} in category "${category}":`, e.message);
           }
         }
 
