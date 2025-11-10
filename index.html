@@ -431,7 +431,7 @@
       </div>
 
       <div class="input-group">
-        <label>Description (Category)</label>
+        <label>Description (Optional)</label>
         <input type="text" id="expenseDesc" placeholder="Dinner, Movie tickets, etc." />
       </div>
 
@@ -457,11 +457,6 @@
       </div>
 
       <div class="input-group">
-        <label>Category</label>
-        <input type="text" id="adjustCategory" placeholder="e.g., Dinner, Expense" />
-      </div>
-
-      <div class="input-group">
         <label>New Amount (USDC)</label>
         <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
       </div>
@@ -483,7 +478,7 @@
         </button>
       </div>
       <div style="text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
-        Auto-refreshing every 10 seconds...
+        Auto-refreshing every 5 seconds...
       </div>
       
       <div id="balances">
@@ -496,11 +491,9 @@
   </div>
 
   <script>
-    // NEW PROXY ADDRESS
-    const contractAddress = "0x4d473c60224a7c098f5cc0c0a0ac3f02c43c2316";
+    const contractAddress = "0xf6b491763ca2e099bb6c9d3e573524c426152aeb";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-    // UPDATED ABI FOR NEW CONTRACT
     const contractABI = [
       { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [
@@ -509,27 +502,15 @@
           { "internalType": "address[]", "name": "participants", "type": "address[]" },
           { "internalType": "string", "name": "category", "type": "string" }
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [
-          { "internalType": "address", "name": "creditor", "type": "address" },
-          { "internalType": "string", "name": "category", "type": "string" }
-        ], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [
           { "internalType": "address", "name": "debtor", "type": "address" },
-          { "internalType": "uint256", "name": "newAmount", "type": "uint256" },
-          { "internalType": "string", "name": "category", "type": "string" }
+          { "internalType": "uint256", "name": "newAmount", "type": "uint256" }
         ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [
+      { "inputs": [], "name": "getMyBalances", "outputs": [
           { "internalType": "address[]", "name": "counterparts", "type": "address[]" },
+          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" },
           { "internalType": "string[]", "name": "categories", "type": "string[]" }
-        ], "name": "getMyBalances", "outputs": [
-          { "internalType": "int256[]", "name": "amounts", "type": "int256[]" }
-        ], "stateMutability": "view", "type": "function" },
-      { "inputs": [
-          { "internalType": "address", "name": "debtor", "type": "address" },
-          { "internalType": "address", "name": "creditor", "type": "address" },
-          { "internalType": "string", "name": "category", "type": "string" }
-        ], "name": "getBalance", "outputs": [
-          { "internalType": "uint256", "name": "", "type": "uint256" }
         ], "stateMutability": "view", "type": "function" }
     ];
 
@@ -806,19 +787,6 @@
         statusEl.innerHTML = `✅ Expense recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
         statusEl.className = "status-message success";
 
-        // Save category to localStorage
-        const storedCategories = localStorage.getItem("settleup-categories");
-        let categories = [];
-        if (storedCategories) {
-          try {
-            categories = JSON.parse(storedCategories);
-          } catch(e) {}
-        }
-        if (!categories.includes(desc)) {
-          categories.push(desc);
-          localStorage.setItem("settleup-categories", JSON.stringify(categories));
-        }
-
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
         document.getElementById("expenseDesc").value = "";
@@ -838,7 +806,6 @@
     async function adjustBalanceSubmit() {
       const debtorInput = document.getElementById("adjustDebtor").value.trim();
       const amountInput = document.getElementById("adjustAmount").value.trim();
-      const category = document.getElementById("adjustCategory").value.trim() || "Expense";
       const statusEl = document.getElementById("adjustStatus");
 
       if (!debtorInput || amountInput === "") {
@@ -851,3 +818,160 @@
 
       const amountFloat = parseFloat(amountInput);
       if (isNaN(amountFloat) || amountFloat < 0) {
+        return toast("⚠️ Invalid amount");
+      }
+
+      const newAmount = ethers.utils.parseUnits(amountInput, 6);
+      const btn = document.getElementById("adjustBalance");
+      btn.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "";
+
+      try {
+        const tx = await contract.adjustBalance(debtorInput, newAmount);
+        
+        statusEl.textContent = "⏳ Updating balance...";
+        statusEl.className = "status-message success";
+
+        const receipt = await tx.wait();
+
+        statusEl.innerHTML = `✅ Balance updated! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
+        statusEl.className = "status-message success";
+
+        document.getElementById("adjustDebtor").value = "";
+        document.getElementById("adjustAmount").value = "";
+
+        toast("✅ Balance adjusted!");
+        setTimeout(refreshBalances, 1500);
+      } catch (e) {
+        statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
+        statusEl.className = "status-message error";
+        toast("❌ Adjustment failed");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function settleWith(creditor) {
+      const name = contacts[creditor.toLowerCase()] || shortAddr(creditor);
+      if (!confirm(`Settle with ${name}?`)) return;
+      
+      try {
+        const tx = await contract.settle(creditor);
+        toast("⏳ Settling...");
+        await tx.wait();
+        toast("✅ Settled successfully!");
+        await initUSDC();
+        refreshBalances();
+      } catch (e) { 
+        toast("❌ Settlement failed");
+        console.error(e);
+      }
+    }
+
+    async function refreshBalances() {
+      const el = document.getElementById("balances");
+      const btn = document.getElementById("refreshBalances");
+
+      if (!contract || !account) {
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <p>Connect wallet to view balances</p>
+          </div>
+        `;
+        return;
+      }
+
+      btn.disabled = true;
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          <p>Loading balances...</p>
+        </div>
+      `;
+
+      let counterparts = [], amounts = [], categories = [];
+      try {
+        [counterparts, amounts, categories] = await contract.getMyBalances();
+      } catch (e) {
+        console.error("getMyBalances failed", e);
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <p>Failed to load balances</p>
+          </div>
+        `;
+        btn.disabled = false;
+        return;
+      }
+
+      if (!counterparts || counterparts.length === 0) {
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">✨</div>
+            <p>No balances yet</p>
+          </div>
+        `;
+        btn.disabled = false;
+        return;
+      }
+
+      let html = '';
+      let hasBalances = false;
+
+      for (let i = 0; i < counterparts.length; i++) {
+        const addr = counterparts[i];
+        const raw = amounts[i].toString();
+        const positive = !raw.startsWith("-");
+        const absRaw = positive ? raw : raw.slice(1);
+        const absBN = ethers.BigNumber.from(absRaw);
+        const val = parseFloat(ethers.utils.formatUnits(absBN, 6)).toFixed(2);
+        const category = categories[i] || "Expense";
+        const contactName = contacts[addr.toLowerCase()] || shortAddr(addr);
+
+        if (absBN.isZero()) continue;
+        hasBalances = true;
+
+        html += `
+          <div class="balance-item">
+            <div class="balance-info">
+              <div class="balance-amount ${positive ? 'positive' : 'negative'}">
+                ${positive ? '+' : '-'} $${val}
+              </div>
+              <div class="balance-name">${contactName}</div>
+              <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">${category}</div>
+            </div>
+            ${!positive ? `<button class="btn-settle" onclick="settleWith('${addr}')">Settle</button>` : ''}
+          </div>
+        `;
+      }
+
+      if (!hasBalances) {
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">✨</div>
+            <p>No active balances</p>
+          </div>
+        `;
+      } else {
+        el.innerHTML = html;
+      }
+
+      btn.disabled = false;
+    }
+
+    document.getElementById("connectWallet").onclick = connectWallet;
+    document.getElementById("addExpense").onclick = addExpense;
+    document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
+    document.getElementById("refreshBalances").onclick = refreshBalances;
+
+    // AUTO-REFRESH: Refresh balances every 5 seconds when connected
+    setInterval(() => {
+      if (account && contract) {
+        refreshBalances();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
