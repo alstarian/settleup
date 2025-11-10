@@ -108,7 +108,6 @@
         <h2 class="section-title" style="margin:0;">Balances</h2>
         <button id="refreshBalances" class="btn-secondary">Refresh</button>
       </div>
-      <div style="text-align:center;font-size:12px;color:#9ca3af;margin-bottom:12px;">Auto-refreshing every 5 seconds...</div>
       <div id="balances">
         <div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet to view balances</p></div>
       </div>
@@ -120,7 +119,6 @@
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
     const contractABI = [
-      {"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},
       {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"},{"internalType":"string","name":"category","type":"string"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},
       {"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},
       {"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"uint256","name":"newAmount","type":"uint256"},{"internalType":"string","name":"category","type":"string"}],"name":"adjustBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},
@@ -211,7 +209,7 @@
 
     async function loadAllData(){
       try{
-        const events=await contract.queryFilter("*");
+        const events=await contract.queryFilter("*",0,"latest");
         const addrSet=new Set(); const catSet=new Set(["General"]);
         events.forEach(e=>{
           if(e.args.payer)addrSet.add(e.args.payer);
@@ -222,18 +220,24 @@
         });
         counterparts=Array.from(addrSet);
         categories=Array.from(catSet);
-      }catch(e){counterparts=[];categories=["General"]}
+      }catch(e){console.log("No events yet"); counterparts=[]; categories=["General"]}
     }
 
     async function refreshBalances(){
       const el=document.getElementById("balances");
       if(!contract||!account){el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet</p></div>`;return;}
+
+      // ONLY CALL getMyBalances IF WE HAVE DATA
+      if(counterparts.length===0 || categories.length===0){
+        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No expenses recorded yet</p></div>`;
+        return;
+      }
+
       el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Hourglass</div><p>Loading...</p></div>`;
 
       try{
         const amounts=await contract.getMyBalances(counterparts,categories);
-        let html='';
-        let idx=0;
+        let html=''; let idx=0;
         for(const addr of counterparts){
           for(const cat of categories){
             const raw=amounts[idx++].toString();
@@ -251,10 +255,10 @@
             </div>`;
           }
         }
-        el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No balances yet</p></div>`;
+        el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No active balances</p></div>`;
       }catch(e){
         console.error("getMyBalances error:",e);
-        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Error: ${e.message.slice(0,80)}</p></div>`;
+        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Error: ${e.message.slice(0,100)}</p></div>`;
       }
     }
 
@@ -266,7 +270,7 @@
       }catch(e){toast("Failed");console.error(e)}
     }
 
-    document.getElementById("addExpense").onclick=async()=>{ /* same as before but with category */ 
+    document.getElementById("addExpense").onclick=async()=>{
       const amt=document.getElementById("amount").value.trim();
       const payer=document.getElementById("payer").value.trim();
       const parts=document.getElementById("participants").value.trim();
@@ -288,7 +292,7 @@
       finally{btn.disabled=false}
     };
 
-    document.getElementById("adjustBalance").onclick=async()=>{ /* same */ 
+    document.getElementById("adjustBalance").onclick=async()=>{
       const debtor=document.getElementById("adjustDebtor").value.trim();
       const amt=document.getElementById("adjustAmount").value.trim();
       const cat=document.getElementById("adjustCategory").value.trim()||"General";
@@ -309,7 +313,8 @@
 
     document.getElementById("connectWallet").onclick=connectWallet;
     document.getElementById("refreshBalances").onclick=refreshBalances;
-    setInterval(()=>{if(account&&contract)refreshBalances();},5000);
+
+    // AUTO-REFRESH REMOVED AS YOU REQUESTED
   </script>
 </body>
 </html>
