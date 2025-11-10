@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SettleUp - Split Bills in USDC</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5  .7.2/dist/ethers.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box}
@@ -89,7 +89,7 @@
       <div class="input-group"><label>Amount (USDC)</label><input type="number" step="0.01" id="amount" placeholder="30.00"/></div>
       <div class="input-group"><label>Payer</label><input type="text" id="payer" placeholder="Click contact or address"/></div>
       <div class="input-group"><label>Participants</label><input type="text" id="participants" placeholder="Click contacts"/></div>
-      <div class="input-group"><label>Description</label><input type="text" id="expenseDesc" placeholder="Dinner etc." value="General"/></div>
+      <div class="input-group"><label>Category</label><input type="text" id="category" placeholder="Dinner, Rent, etc." value="General"/></div>
       <button id="addExpense" class="btn-primary">Record Expense</button>
       <div id="addExpenseStatus"></div>
     </div>
@@ -98,7 +98,7 @@
       <h2 class="section-title">Adjust Balance</h2>
       <div class="input-group"><label>Person (Owes You)</label><input type="text" id="adjustDebtor" placeholder="Address"/></div>
       <div class="input-group"><label>New Amount (USDC)</label><input type="number" step="0.01" id="adjustAmount" placeholder="0.00"/></div>
-      <div class="input-group"><label>Description</label><input type="text" id="adjustDesc" placeholder="General" value="General"/></div>
+      <div class="input-group"><label>Category</label><input type="text" id="adjustCategory" placeholder="General" value="General"/></div>
       <button id="adjustBalance" class="btn-primary">Update Balance</button>
       <div id="adjustStatus"></div>
     </div>
@@ -116,7 +116,6 @@
   </div>
 
   <script>
-    // NEW PROXY + NEW ABI
     const contractAddress = "0x4d473c60224a7c098f5cc0c0a0ac3f02c43c2316";
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
@@ -131,8 +130,8 @@
 
     let provider, signer, contract, account, usdcContract;
     let contacts = {};
-    let allCounterparts = [];
-    let allCategories = ["General"];
+    let counterparts = [];
+    let categories = ["General"];
 
     function shortAddr(a){return a.slice(0,6)+'...'+a.slice(-4)}
     function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),3000)}
@@ -140,26 +139,19 @@
     function loadContacts(){const s=localStorage.getItem("settleup-contacts");if(s)contacts=JSON.parse(s)}
     function saveContacts(){localStorage.setItem("settleup-contacts",JSON.stringify(contacts))}
 
-    function addContact(address,name){const a=address.toLowerCase();if(!name)return toast("Name required");contacts[a]=name.trim();saveContacts();renderContacts();toast(`Added ${name}`)}
-    function deleteContact(address){const a=address.toLowerCase();if(a===account.toLowerCase())return toast("Can't delete yourself");delete contacts[a];saveContacts();renderContacts();toast("Deleted")}
-
     function renderContacts(){
       const list=document.getElementById("contactsList");list.innerHTML="";
       if(!account)return;
       const you=document.createElement("button");you.className="contact-btn you";you.textContent="You";
       you.onclick=()=>{document.getElementById("payer").value=account;toast("Payer: You")};list.appendChild(you);
-      Object.entries(contacts).forEach(([a,name])=>{
+      Object.entries(contacts).forEach(([a,n])=>{
         if(a===account.toLowerCase())return;
         const b=document.createElement("button");b.className="contact-btn";b.style.position="relative";
         const del=document.createElement("div");del.className="delete-icon";del.textContent="X";
-        del.onclick=e=>{e.preventDefault();e.stopPropagation();if(confirm(`Delete ${name}?`))deleteContact(a)};
-        b.textContent=name;b.appendChild(del);
-        b.onclick=()=>{
-          const p=document.getElementById("participants").value.trim();
-          const arr=p?p.split(",").map(x=>x.trim()):[];
-          if(!arr.map(x=>x.toLowerCase()).includes(a)){arr.push(a);document.getElementById("participants").value=arr.join(", ");toast(`Added ${name}`)}
-          else toast("Already added");
-        };
+        del.onclick=e=>{e.preventDefault();e.stopPropagation();if(confirm(`Delete ${n}?`))delete contacts[a],saveContacts(),renderContacts()};
+        b.textContent=n;b.appendChild(del);
+        b.onclick=()=>{const p=document.getElementById("participants").value.trim();const arr=p?p.split(",").map(x=>x.trim()):[];
+          if(!arr.map(x=>x.toLowerCase()).includes(a)){arr.push(a);document.getElementById("participants").value=arr.join(", ");toast(`Added ${n}`)}else toast("Already added")};
         list.appendChild(b);
       });
     }
@@ -194,7 +186,7 @@
         loadContacts();
         if(!contacts[account.toLowerCase()]){
           const n=prompt("Your name?","Me");
-          if(n)addContact(account,n);
+          if(n){contacts[account.toLowerCase()]=n;saveContacts();}
         }
 
         document.getElementById("walletAddress").textContent=shortAddr(account);
@@ -205,7 +197,7 @@
         document.getElementById("balancesCard").style.display="block";
         btn.style.display="none";
 
-        renderContacts();await initUSDC();await findAllData();await refreshBalances();
+        renderContacts();await initUSDC();await loadAllData();await refreshBalances();
         toast("Connected!");
       }catch(e){toast("Connection failed");console.error(e)}
       finally{btn.disabled=false}
@@ -223,23 +215,22 @@
       try{const tx=await usdcContract.approve(contractAddress,ethers.constants.MaxUint256);toast("Approving...");await tx.wait();b.style.display="none";toast("Approved!");await initUSDC();}
       catch(e){toast("Approve failed")}finally{b.disabled=false}};
 
-    document.getElementById("addContactBtn").onclick=()=>{const a=prompt("Address:");if(!a||!ethers.utils.isAddress(a))return toast("Invalid address");const n=prompt("Name:");if(n)addContact(a,n)};
+    document.getElementById("addContactBtn").onclick=()=>{const a=prompt("Address:");if(!a||!ethers.utils.isAddress(a))return toast("Invalid address");const n=prompt("Name:");if(n){contacts[a.toLowerCase()]=n;saveContacts();renderContacts();toast("Added")}};
 
-    // FIND ALL COUNTERPARTS & CATEGORIES FROM EVENTS
-    async function findAllData(){
+    async function loadAllData(){
       try{
         const events=await contract.queryFilter({},0,"latest");
-        const setC=new Set(); const setCat=new Set(["General"]);
+        const setAddr=new Set(); const setCat=new Set(["General"]);
         events.forEach(e=>{
-          if(e.args.payer){setC.add(e.args.payer)}
-          if(e.args.participants)e.args.participants.forEach(p=>setC.add(p));
-          if(e.args.creditor)setC.add(e.args.creditor);
-          if(e.args.debtor)setC.add(e.args.debtor);
+          if(e.args.payer)setAddr.add(e.args.payer);
+          if(e.args.participants)e.args.participants.forEach(p=>setAddr.add(p));
+          if(e.args.creditor)setAddr.add(e.args.creditor);
+          if(e.args.debtor)setAddr.add(e.args.debtor);
           if(e.args.category)setCat.add(e.args.category);
         });
-        allCounterparts=Array.from(setC);
-        allCategories=Array.from(setCat);
-      }catch(e){allCounterparts=[];allCategories=["General"]}
+        counterparts=Array.from(setAddr);
+        categories=Array.from(setCat);
+      }catch(e){counterparts=[];categories=["General"]}
     }
 
     async function refreshBalances(){
@@ -250,11 +241,10 @@
       el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Hourglass</div><p>Loading...</p></div>`;
 
       try{
-        const amounts=await contract.getMyBalances(allCounterparts,allCategories);
-        let html='';
-        let idx=0;
-        for(const addr of allCounterparts){
-          for(const cat of allCategories){
+        const amounts=await contract.getMyBalances(counterparts,categories);
+        let html=''; let idx=0;
+        for(const addr of counterparts){
+          for(const cat of categories){
             const raw=amounts[idx++].toString();
             const positive=!raw.startsWith("-");
             const abs=positive?raw:raw.slice(1);
@@ -272,25 +262,26 @@
         }
         el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No balances yet</p></div>`;
       }catch(e){
-        console.error(e);
-        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Failed to load</p></div>`;
+        console.error("getMyBalances failed:",e);
+        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Failed to load balances</p></div>`;
       }
       btn.disabled=false;
     }
 
     async function settleWith(creditor,cat){
-      if(!confirm(`Settle ${cat} with ${contacts[creditor.toLowerCase()]||shortAddr(creditor)}?`))return;
+      if(!confirm(`Settle "${cat}" with ${contacts[creditor.toLowerCase()]||shortAddr(creditor)}?`))return;
       try{
         const tx=await contract.settle(creditor,cat);
-        toast("Settling...");await tx.wait();toast("Settled!");await initUSDC();await findAllData();refreshBalances();
-      }catch(e){toast("Failed");console.error(e)}
+        toast("Settling...");await tx.wait();toast("Settled!");
+        await initUSDC();await loadAllData();refreshBalances();
+      }catch(e){toast("Settlement failed");console.error(e)}
     }
 
     document.getElementById("addExpense").onclick=async()=>{
       const amt=document.getElementById("amount").value.trim();
       const payer=document.getElementById("payer").value.trim();
       const parts=document.getElementById("participants").value.trim();
-      const cat=document.getElementById("expenseDesc").value.trim()||"General";
+      const cat=document.getElementById("category").value.trim()||"General";
       if(!amt||!payer||!parts)return toast("Fill all fields");
       const amount=ethers.utils.parseUnits(amt,6);
       const participants=[...new Set(parts.split(",").map(a=>a.trim()).filter(a=>ethers.utils.isAddress(a)&&a.toLowerCase()!==payer.toLowerCase()))];
@@ -301,17 +292,17 @@
         document.getElementById("addExpenseStatus").textContent="Confirming...";
         await tx.wait();
         document.getElementById("addExpenseStatus").innerHTML=`Done! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View</a>`;
-        document.getElementById("amount").value="";document.getElementById("participants").value="";document.getElementById("expenseDesc").value="General";
+        document.getElementById("amount").value="";document.getElementById("participants").value="";document.getElementById("category").value="General";
         toast("Expense recorded!");
-        await findAllData();refreshBalances();
-      }catch(e){document.getElementById("addExpenseStatus").textContent="Failed";toast("Tx failed")}
+        await loadAllData();refreshBalances();
+      }catch(e){document.getElementById("addExpenseStatus").textContent="Failed";toast("Tx failed");console.error(e)}
       finally{btn.disabled=false}
     };
 
     document.getElementById("adjustBalance").onclick=async()=>{
       const debtor=document.getElementById("adjustDebtor").value.trim();
       const amt=document.getElementById("adjustAmount").value.trim();
-      const cat=document.getElementById("adjustDesc").value.trim()||"General";
+      const cat=document.getElementById("adjustCategory").value.trim()||"General";
       if(!debtor||!amt)return toast("Fill fields");
       const newAmt=ethers.utils.parseUnits(amt,6);
       const btn=document.getElementById("adjustBalance");btn.disabled=true;
@@ -322,8 +313,8 @@
         document.getElementById("adjustStatus").innerHTML=`Updated! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View</a>`;
         document.getElementById("adjustDebtor").value="";document.getElementById("adjustAmount").value="";
         toast("Adjusted!");
-        await findAllData();refreshBalances();
-      }catch(e){document.getElementById("adjustStatus").textContent="Failed";toast("Tx failed")}
+        await loadAllData();refreshBalances();
+      }catch(e){document.getElementById("adjustStatus").textContent="Failed";toast("Tx failed");console.error(e)}
       finally{btn.disabled=false}
     };
 
