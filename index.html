@@ -220,25 +220,34 @@
         });
         counterparts=Array.from(addrSet);
         categories=Array.from(catSet);
-      }catch(e){console.log("No events yet"); counterparts=[]; categories=["General"]}
+      }catch(e){counterparts=[];categories=["General"]}
     }
 
+    // FIXED refreshBalances — excludes yourself + safe call
     async function refreshBalances(){
       const el=document.getElementById("balances");
-      if(!contract||!account){el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet</p></div>`;return;}
+      if(!contract||!account){
+        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Chart</div><p>Connect wallet</p></div>`;
+        return;
+      }
 
-      // ONLY CALL getMyBalances IF WE HAVE DATA
-      if(counterparts.length===0 || categories.length===0){
+      if(counterparts.length===0){
         el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No expenses recorded yet</p></div>`;
+        return;
+      }
+
+      const others = counterparts.filter(a => a.toLowerCase() !== account.toLowerCase());
+      if(others.length===0){
+        el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No one else in expenses yet</p></div>`;
         return;
       }
 
       el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Hourglass</div><p>Loading...</p></div>`;
 
       try{
-        const amounts=await contract.getMyBalances(counterparts,categories);
+        const amounts=await contract.getMyBalances(others,categories);
         let html=''; let idx=0;
-        for(const addr of counterparts){
+        for(const addr of others){
           for(const cat of categories){
             const raw=amounts[idx++].toString();
             const positive=!raw.startsWith("-");
@@ -255,7 +264,7 @@
             </div>`;
           }
         }
-        el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>No active balances</p></div>`;
+        el.innerHTML=html||`<div class="empty-state"><div class="empty-state-icon">Sparkles</div><p>All settled!</p></div>`;
       }catch(e){
         console.error("getMyBalances error:",e);
         el.innerHTML=`<div class="empty-state"><div class="empty-state-icon">Warning</div><p>Error: ${e.message.slice(0,100)}</p></div>`;
@@ -313,8 +322,6 @@
 
     document.getElementById("connectWallet").onclick=connectWallet;
     document.getElementById("refreshBalances").onclick=refreshBalances;
-
-    // AUTO-REFRESH REMOVED AS YOU REQUESTED
   </script>
 </body>
 </html>
