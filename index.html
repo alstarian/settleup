@@ -43,10 +43,11 @@
       font-weight: 600;
       cursor: pointer;
       margin-top: 10px;
+      transition: all 0.2s;
     }
     .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .btn-secondary { background: #f0f0f0; color: #333; }
     .btn-secondary:hover { background: #e0e0e0; }
     .btn-green { background: #10b981; color: white; }
@@ -111,16 +112,16 @@
     <!-- Add Expense -->
     <div class="card hidden" id="expenseCard">
       <h2>📝 Add Expense</h2>
-
+      
       <div class="info-box">
         <strong>How it works:</strong> Enter the total bill. Select who paid. Select everyone who shared the expense (including the payer). The cost is split equally.
       </div>
-
+      
       <div class="form-group">
         <label>Total Amount (USDC)</label>
-        <input type="number" id="expenseAmount" placeholder="100.00" step="0.01" />
+        <input type="number" id="expenseAmount" placeholder="100.00" step="0.01" max="1000000" />
       </div>
-
+      
       <div class="form-group">
         <label>Category</label>
         <select id="expenseCategory">
@@ -131,19 +132,19 @@
           <option value="Other">📦 Other</option>
         </select>
       </div>
-
+      
       <div class="form-group">
         <label>Who Paid? <span class="label-hint">(click one)</span></label>
         <div id="payerChips"></div>
       </div>
-
+      
       <div class="form-group">
         <label>Who Shared the Bill? <span class="label-hint">(click all who participated, including payer)</span></label>
         <div id="participantChips"></div>
       </div>
-
+      
       <div id="splitPreview" style="background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;display:none;"></div>
-
+      
       <button class="btn-primary" id="addExpenseBtn">💳 Record Expense</button>
       <div id="expenseStatus"></div>
     </div>
@@ -169,139 +170,14 @@
 
   <script>
     // ========== CONFIGURATION ==========
-    const CONTRACT_ADDRESS = "0x29197Af93e19dFF75e439aC6f79f3bb7dE7845CD";
+    const CONTRACT_ADDRESS = "0x87DE5D58F0d25Db2A7F3E8af264AFCd82e9e87dC";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"];
 
     // ========== CONTRACT ABI ==========
-    const CONTRACT_ABI = [
-      {
-        "inputs": [{"internalType": "address", "name": "usdcAddress", "type": "address"}],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {"indexed": true, "internalType": "address", "name": "creditor", "type": "address"},
-          {"indexed": true, "internalType": "address", "name": "debtor", "type": "address"},
-          {"indexed": false, "internalType": "uint256", "name": "newAmount", "type": "uint256"},
-          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "BalanceAdjusted",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {"indexed": true, "internalType": "address", "name": "payer", "type": "address"},
-          {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
-          {"indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]"},
-          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "ExpenseAdded",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {"indexed": true, "internalType": "address", "name": "debtor", "type": "address"},
-          {"indexed": true, "internalType": "address", "name": "creditor", "type": "address"},
-          {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
-          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "Settled",
-        "type": "event"
-      },
-      {
-        "inputs": [
-          {"internalType": "uint256", "name": "amount", "type": "uint256"},
-          {"internalType": "address", "name": "payer", "type": "address"},
-          {"internalType": "address[]", "name": "participants", "type": "address[]"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "addExpense",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "debtor", "type": "address"},
-          {"internalType": "uint256", "name": "newAmount", "type": "uint256"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "adjustBalance",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "", "type": "address"},
-          {"internalType": "address", "name": "", "type": "address"},
-          {"internalType": "string", "name": "", "type": "string"}
-        ],
-        "name": "balances",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "debtor", "type": "address"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "creditFrom",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "creditor", "type": "address"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "debtTo",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "debtor", "type": "address"},
-          {"internalType": "address", "name": "creditor", "type": "address"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "getBalance",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "creditor", "type": "address"},
-          {"internalType": "string", "name": "category", "type": "string"}
-        ],
-        "name": "settle",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "usdc",
-        "outputs": [{"internalType": "contract IERC20", "name": "", "type": "address"}],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ];
+    const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"creditor","type":"address"},{"indexed":true,"internalType":"address","name":"debtor","type":"address"},{"indexed":false,"internalType":"uint256","name":"oldAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newAmount","type":"uint256"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"BalanceAdjusted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"sharePerPerson","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"ExpenseAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"debtor","type":"address"},{"indexed":true,"internalType":"address","name":"creditor","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"Settled","type":"event"},{"inputs":[],"name":"MAX_BALANCE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_PARTICIPANTS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"},{"internalType":"string","name":"category","type":"string"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"uint256","name":"newAmount","type":"uint256"},{"internalType":"string","name":"category","type":"string"}],"name":"adjustBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"},{"internalType":"string","name":"","type":"string"}],"name":"balances","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"creditFrom","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"debtTo","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"getBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getConstants","outputs":[{"internalType":"uint256","name":"maxBalance","type":"uint256"},{"internalType":"uint256","name":"maxParticipants","type":"uint256"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"usdc","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
 
-    const USDC_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function allowance(address,address) view returns (uint256)",
-      "function approve(address,uint256) returns (bool)"
-    ];
+    const USDC_ABI = ["function balanceOf(address) view returns (uint256)","function allowance(address,address) view returns (uint256)","function approve(address,uint256) returns (bool)"];
 
     // ========== STATE ==========
     let provider, signer, contract, usdcContract;
@@ -323,26 +199,21 @@
 
     function getContactName(addr) {
       const normalized = addr.toLowerCase();
-      if (normalized === account?.toLowerCase()) {
-        return "Me";
-      }
+      if (normalized === account?.toLowerCase()) return "Me";
       return contacts[normalized] || shortAddr(addr);
     }
 
     // ========== CONTACTS ==========
     function loadContacts() {
-      const stored = localStorage.getItem("settleup_contacts_v5");
+      const stored = localStorage.getItem("settleup_contacts_v6");
       if (stored) {
-        try {
-          contacts = JSON.parse(stored);
-        } catch (e) {
-          contacts = {};
-        }
+        try { contacts = JSON.parse(stored); }
+        catch (e) { contacts = {}; }
       }
     }
 
     function saveContacts() {
-      localStorage.setItem("settleup_contacts_v5", JSON.stringify(contacts));
+      localStorage.setItem("settleup_contacts_v6", JSON.stringify(contacts));
     }
 
     function addContact(addr, name) {
@@ -351,12 +222,10 @@
         return;
       }
       const normalized = addr.toLowerCase();
-
       if (normalized === account?.toLowerCase()) {
         alert("You can't add yourself as a contact!");
         return;
       }
-
       contacts[normalized] = name || shortAddr(addr);
       saveContacts();
       renderAll();
@@ -365,19 +234,13 @@
     function renderContacts() {
       const list = document.getElementById("contactsList");
       list.innerHTML = "";
-
       const otherContacts = Object.entries(contacts).filter(([addr]) => addr !== account?.toLowerCase());
-
       otherContacts.forEach(([addr, name]) => {
         const div = document.createElement("div");
         div.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;";
-        div.innerHTML = `
-          <span><strong>${name}</strong><br><small style="color:#888;">${shortAddr(addr)}</small></span>
-          <button onclick="deleteContact('${addr}')" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">✕</button>
-        `;
+        div.innerHTML = `<span><strong>${name}</strong><br><small style="color:#888;">${shortAddr(addr)}</small></span><button onclick="deleteContact('${addr}')" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">✕</button>`;
         list.appendChild(div);
       });
-
       if (otherContacts.length === 0) {
         list.innerHTML = "<p style='color:#888;font-size:14px;'>No contacts yet. Add friends to split bills with!</p>";
       }
@@ -393,27 +256,19 @@
     function renderPayerChips() {
       const container = document.getElementById("payerChips");
       container.innerHTML = "";
-
       if (account) {
         const meChip = document.createElement("span");
         meChip.className = "contact-chip" + (selectedPayer === account.toLowerCase() ? " selected" : "");
         meChip.textContent = "👤 Me";
-        meChip.onclick = () => {
-          selectedPayer = account.toLowerCase();
-          renderAll();
-        };
+        meChip.onclick = () => { selectedPayer = account.toLowerCase(); renderAll(); };
         container.appendChild(meChip);
       }
-
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
         chip.className = "contact-chip" + (selectedPayer === addr ? " selected" : "");
         chip.textContent = name;
-        chip.onclick = () => {
-          selectedPayer = addr;
-          renderAll();
-        };
+        chip.onclick = () => { selectedPayer = addr; renderAll(); };
         container.appendChild(chip);
       });
     }
@@ -421,7 +276,6 @@
     function renderSplitterChips() {
       const container = document.getElementById("participantChips");
       container.innerHTML = "";
-
       if (account) {
         const meChip = document.createElement("span");
         meChip.className = "contact-chip" + (selectedSplitters.includes(account.toLowerCase()) ? " selected" : "");
@@ -429,7 +283,6 @@
         meChip.onclick = () => toggleSplitter(account.toLowerCase());
         container.appendChild(meChip);
       }
-
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -442,11 +295,8 @@
 
     function toggleSplitter(addr) {
       const idx = selectedSplitters.indexOf(addr);
-      if (idx >= 0) {
-        selectedSplitters.splice(idx, 1);
-      } else {
-        selectedSplitters.push(addr);
-      }
+      if (idx >= 0) selectedSplitters.splice(idx, 1);
+      else selectedSplitters.push(addr);
       renderAll();
     }
 
@@ -454,30 +304,27 @@
       const preview = document.getElementById("splitPreview");
       const amountInput = document.getElementById("expenseAmount").value;
       const amount = parseFloat(amountInput) || 0;
-
       if (amount <= 0 || !selectedPayer || selectedSplitters.length === 0) {
         preview.style.display = "none";
         return;
       }
-
+      if (amount > 1000000) {
+        preview.innerHTML = `<strong>⚠️ Amount exceeds 1M USDC limit</strong>`;
+        preview.style.display = "block";
+        return;
+      }
       const share = amount / selectedSplitters.length;
       const payerName = getContactName(selectedPayer);
-
       const debtors = selectedSplitters.filter(addr => addr !== selectedPayer);
-
       if (debtors.length === 0) {
         preview.innerHTML = `<strong>⚠️ No one owes anything</strong><br>Select at least one other person who shared the bill.`;
         preview.style.display = "block";
         return;
       }
-
-      let html = `<strong>💡 Split Preview:</strong><br>`;
-      html += `Total: $${amount.toFixed(2)} ÷ ${selectedSplitters.length} people = $${share.toFixed(2)} each<br><br>`;
-
+      let html = `<strong>💡 Split Preview:</strong><br>Total: $${amount.toFixed(2)} ÷ ${selectedSplitters.length} people = $${share.toFixed(2)} each<br><br>`;
       debtors.forEach(addr => {
         html += `• ${getContactName(addr)} owes ${payerName}: <strong>$${share.toFixed(2)}</strong><br>`;
       });
-
       preview.innerHTML = html;
       preview.style.display = "block";
     }
@@ -495,13 +342,11 @@
         showStatus("connectStatus", "MetaMask not found!", "error");
         return;
       }
-
       try {
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         account = await signer.getAddress();
-
         const network = await provider.getNetwork();
         if (network.chainId !== 8453) {
           try {
@@ -516,36 +361,25 @@
             return;
           }
         }
-
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
-
         loadContacts();
-
         const myAddr = account.toLowerCase();
         if (contacts[myAddr]) {
           delete contacts[myAddr];
           saveContacts();
         }
-
         selectedPayer = account.toLowerCase();
         selectedSplitters = [account.toLowerCase()];
-
         document.getElementById("connectCard").classList.add("hidden");
         document.getElementById("walletCard").classList.remove("hidden");
         document.getElementById("expenseCard").classList.remove("hidden");
         document.getElementById("balancesCard").classList.remove("hidden");
         document.getElementById("contactsCard").classList.remove("hidden");
-
         const usdcBal = await usdcContract.balanceOf(account);
-        document.getElementById("walletInfo").innerHTML = `
-          <p><strong>Address:</strong> ${shortAddr(account)}</p>
-          <p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>
-        `;
-
+        document.getElementById("walletInfo").innerHTML = `<p><strong>Address:</strong> ${shortAddr(account)}</p><p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>`;
         renderAll();
         await refreshBalances();
-
       } catch (e) {
         showStatus("connectStatus", e.message, "error");
       }
@@ -555,61 +389,53 @@
     async function addExpense() {
       const amountInput = document.getElementById("expenseAmount").value;
       const category = document.getElementById("expenseCategory").value;
-
       if (!amountInput || parseFloat(amountInput) <= 0) {
         showStatus("expenseStatus", "Enter a valid amount", "error");
         return;
       }
-
+      if (parseFloat(amountInput) > 1000000) {
+        showStatus("expenseStatus", "Amount exceeds 1M USDC limit", "error");
+        return;
+      }
       if (!selectedPayer) {
         showStatus("expenseStatus", "Select who paid", "error");
         return;
       }
-
       if (selectedSplitters.length < 2) {
         showStatus("expenseStatus", "Select at least 2 people who shared the bill", "error");
         return;
       }
-
+      if (selectedSplitters.length > 50) {
+        showStatus("expenseStatus", "Maximum 50 participants allowed", "error");
+        return;
+      }
       const participants = selectedSplitters.filter(addr => addr !== selectedPayer);
-
       if (participants.length === 0) {
         showStatus("expenseStatus", "No one owes the payer! Select others who shared the bill.", "error");
         return;
       }
-
       const amount = ethers.utils.parseUnits(amountInput, 6);
       const payerChecksum = ethers.utils.getAddress(selectedPayer);
       const participantsChecksum = participants.map(p => ethers.utils.getAddress(p));
-
       const btn = document.getElementById("addExpenseBtn");
       btn.disabled = true;
       showStatus("expenseStatus", "Sending transaction...", "info");
-
       try {
         const tx = await contract.addExpense(amount, payerChecksum, participantsChecksum, category);
         showStatus("expenseStatus", "Waiting for confirmation...", "info");
-
         await tx.wait();
-
         showStatus("expenseStatus", `✅ Expense recorded!`, "success");
-
         document.getElementById("expenseAmount").value = "";
         selectedSplitters = [account.toLowerCase()];
         renderAll();
-
         for (const p of participants) {
           if (!contacts[p.toLowerCase()]) {
             const name = prompt(`Save ${shortAddr(p)} as contact:`, shortAddr(p));
-            if (name && name.trim()) {
-              addContact(p, name.trim());
-            }
+            if (name && name.trim()) addContact(p, name.trim());
           }
         }
-
         await new Promise(r => setTimeout(r, 3000));
         await refreshBalances();
-
       } catch (e) {
         showStatus("expenseStatus", `Error: ${e.reason || e.message}`, "error");
       } finally {
@@ -621,73 +447,46 @@
     async function refreshBalances() {
       const list = document.getElementById("balancesList");
       list.innerHTML = "<p>Loading...</p>";
-
       const balances = [];
       const contactAddrs = Object.keys(contacts).filter(a => a !== account.toLowerCase());
-
       if (contactAddrs.length === 0) {
         list.innerHTML = "<p style='color:#888;'>Add contacts to see balances with them.</p>";
         return;
       }
-
       for (const contactAddr of contactAddrs) {
         for (const category of CATEGORIES) {
           try {
             await new Promise(r => setTimeout(r, 100));
-
             const contactChecksum = ethers.utils.getAddress(contactAddr);
             const accountChecksum = ethers.utils.getAddress(account);
-
             const theyOweUs = await contract.getBalance(contactChecksum, accountChecksum, category);
             const weOweThem = await contract.getBalance(accountChecksum, contactChecksum, category);
-
             if (!theyOweUs.isZero()) {
               balances.push({ contact: contactAddr, category, type: "credit", amount: theyOweUs });
             }
-
             if (!weOweThem.isZero()) {
               balances.push({ contact: contactAddr, category, type: "debt", amount: weOweThem });
             }
-
           } catch (e) {
             console.error(`Error checking ${contactAddr}/${category}:`, e);
           }
         }
       }
-
       if (balances.length === 0) {
         list.innerHTML = "<p style='color:#888;'>✨ All settled up! No outstanding balances.</p>";
         return;
       }
-
       list.innerHTML = "";
       for (const b of balances) {
         const contactName = getContactName(b.contact);
         const amountStr = parseFloat(ethers.utils.formatUnits(b.amount, 6)).toFixed(2);
-
         const card = document.createElement("div");
         card.className = "balance-card";
-
         if (b.type === "credit") {
-          card.innerHTML = `
-            <div class="balance-amount positive">+ ${amountStr} USDC</div>
-            <div class="balance-details">${contactName} owes you • ${b.category}</div>
-            <button class="btn-secondary" style="margin-top:10px;width:auto;padding:8px 16px;" 
-              onclick="adjustBalancePrompt('${b.contact}', '${b.category}', '${amountStr}')">
-              ✏️ Adjust
-            </button>
-          `;
+          card.innerHTML = `<div class="balance-amount positive">+ ${amountStr} USDC</div><div class="balance-details">${contactName} owes you • ${b.category}</div><button class="btn-secondary" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="adjustBalancePrompt('${b.contact}', '${b.category}', '${amountStr}')">✏️ Adjust</button>`;
         } else {
-          card.innerHTML = `
-            <div class="balance-amount negative">- ${amountStr} USDC</div>
-            <div class="balance-details">You owe ${contactName} • ${b.category}</div>
-            <button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" 
-              onclick="settleBalance('${b.contact}', '${b.category}')">
-              💳 Pay Now
-            </button>
-          `;
+          card.innerHTML = `<div class="balance-amount negative">- ${amountStr} USDC</div><div class="balance-details">You owe ${contactName} • ${b.category}</div><button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="settleBalance('${b.contact}', '${b.category}')">💳 Pay Now</button>`;
         }
-
         list.appendChild(card);
       }
     }
@@ -695,26 +494,22 @@
     // ========== ADJUST BALANCE ==========
     async function adjustBalancePrompt(debtor, category, currentAmountStr) {
       const name = getContactName(debtor);
-      const input = prompt(
-        `Set new amount that ${name} owes you for ${category}.\n` +
-        `(Current: ${currentAmountStr} USDC)\nEnter 0 to clear:`,
-        currentAmountStr
-      );
+      const input = prompt(`Set new amount that ${name} owes you for ${category}.\n(Current: ${currentAmountStr} USDC)\nEnter 0 to clear:`, currentAmountStr);
       if (input === null) return;
-
       const value = parseFloat(input);
       if (isNaN(value) || value < 0) {
         alert("Enter a non-negative number.");
         return;
       }
-
+      if (value > 1000000) {
+        alert("Amount exceeds 1M USDC limit.");
+        return;
+      }
       try {
         const debtorChecksum = ethers.utils.getAddress(debtor);
         const newAmount = ethers.utils.parseUnits(value.toString(), 6);
-
         const tx = await contract.adjustBalance(debtorChecksum, newAmount, category);
         await tx.wait();
-
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
       } catch (e) {
@@ -726,29 +521,24 @@
     async function settleBalance(creditor, category) {
       const name = getContactName(creditor);
       if (!confirm(`Pay your ${category} balance to ${name}?`)) return;
-
       try {
         const creditorChecksum = ethers.utils.getAddress(creditor);
         const balance = await contract.getBalance(account, creditorChecksum, category);
+        if (balance.isZero()) {
+          alert("No balance to settle!");
+          return;
+        }
         const allowance = await usdcContract.allowance(account, CONTRACT_ADDRESS);
-
         if (allowance.lt(balance)) {
-          const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+          const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, balance);
           await approveTx.wait();
         }
-
         const tx = await contract.settle(creditorChecksum, category);
         await tx.wait();
-
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
-
         const usdcBal = await usdcContract.balanceOf(account);
-        document.getElementById("walletInfo").innerHTML = `
-          <p><strong>Address:</strong> ${shortAddr(account)}</p>
-          <p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>
-        `;
-
+        document.getElementById("walletInfo").innerHTML = `<p><strong>Address:</strong> ${shortAddr(account)}</p><p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>`;
       } catch (e) {
         alert("Settlement failed: " + (e.reason || e.message));
       }
@@ -759,7 +549,6 @@
     document.getElementById("addExpenseBtn").onclick = addExpense;
     document.getElementById("refreshBtn").onclick = refreshBalances;
     document.getElementById("expenseAmount").oninput = updateSplitPreview;
-
     document.getElementById("addContactBtn").onclick = () => {
       const addr = document.getElementById("newContactAddr").value.trim();
       const name = document.getElementById("newContactName").value.trim();
