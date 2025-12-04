@@ -48,7 +48,9 @@
     .btn-primary:hover { opacity: 0.9; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: #f0f0f0; color: #333; }
+    .btn-secondary:hover { background: #e0e0e0; }
     .btn-green { background: #10b981; color: white; }
+    .btn-green:hover { opacity: 0.9; }
     .status { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; }
     .status.success { background: #d1fae5; color: #065f46; }
     .status.error { background: #fee2e2; color: #991b1b; }
@@ -73,6 +75,7 @@
       margin: 4px;
       cursor: pointer;
       font-size: 14px;
+      transition: all 0.2s;
     }
     .contact-chip:hover { border-color: #667eea; background: #ede9fe; }
     .contact-chip.selected { background: #667eea; color: white; border-color: #667eea; }
@@ -84,18 +87,6 @@
       font-size: 13px;
       color: #92400e;
       margin-bottom: 16px;
-    }
-    #log { 
-      background: #1f2937; 
-      color: #10b981; 
-      padding: 12px; 
-      border-radius: 8px; 
-      font-family: monospace; 
-      font-size: 12px; 
-      max-height: 200px; 
-      overflow-y: auto;
-      white-space: pre-wrap;
-      margin-top: 10px;
     }
     .hidden { display: none; }
   </style>
@@ -122,7 +113,7 @@
       <h2>📝 Add Expense</h2>
 
       <div class="info-box">
-        <strong>How it works:</strong> Enter the total bill. Select who paid. Select everyone who shared the meal/expense (including the payer). The cost is split equally.
+        <strong>How it works:</strong> Enter the total bill. Select who paid. Select everyone who shared the expense (including the payer). The cost is split equally.
       </div>
 
       <div class="form-group">
@@ -174,22 +165,15 @@
         <button class="btn-green" id="addContactBtn" style="margin-top:8px;">+ Add Contact</button>
       </div>
     </div>
-
-    <!-- Debug Log -->
-    <div class="card">
-      <h2>🔍 Debug Log</h2>
-      <div id="log">Waiting for connection...</div>
-    </div>
   </div>
 
   <script>
     // ========== CONFIGURATION ==========
     const CONTRACT_ADDRESS = "0x29197Af93e19dFF75e439aC6f79f3bb7dE7845CD";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-    const BASE_RPC = "https://mainnet.base.org";
     const CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"];
 
-    // ========== COMPLETE ABI ==========
+    // ========== CONTRACT ABI ==========
     const CONTRACT_ABI = [
       {
         "inputs": [{"internalType": "address", "name": "usdcAddress", "type": "address"}],
@@ -320,19 +304,11 @@
     ];
 
     // ========== STATE ==========
-    let readProvider, writeProvider, signer, readContract, writeContract, usdcContract;
+    let provider, signer, contract, usdcContract;
     let account = null;
     let contacts = {};
     let selectedPayer = null;
     let selectedSplitters = [];
-
-    // ========== LOGGING ==========
-    function log(msg) {
-      const logEl = document.getElementById("log");
-      const time = new Date().toLocaleTimeString();
-      logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
-      console.log(msg);
-    }
 
     // ========== UTILITIES ==========
     function shortAddr(addr) {
@@ -347,7 +323,6 @@
 
     function getContactName(addr) {
       const normalized = addr.toLowerCase();
-      // Don't return "Me" for your own address, return the actual contact name if it exists
       if (normalized === account?.toLowerCase()) {
         return "Me";
       }
@@ -356,7 +331,7 @@
 
     // ========== CONTACTS ==========
     function loadContacts() {
-      const stored = localStorage.getItem("settleup_contacts_v4");
+      const stored = localStorage.getItem("settleup_contacts_v5");
       if (stored) {
         try {
           contacts = JSON.parse(stored);
@@ -367,7 +342,7 @@
     }
 
     function saveContacts() {
-      localStorage.setItem("settleup_contacts_v4", JSON.stringify(contacts));
+      localStorage.setItem("settleup_contacts_v5", JSON.stringify(contacts));
     }
 
     function addContact(addr, name) {
@@ -377,7 +352,6 @@
       }
       const normalized = addr.toLowerCase();
 
-      // Don't allow adding yourself as a contact with a different name
       if (normalized === account?.toLowerCase()) {
         alert("You can't add yourself as a contact!");
         return;
@@ -386,14 +360,12 @@
       contacts[normalized] = name || shortAddr(addr);
       saveContacts();
       renderAll();
-      log(`Added contact: ${name} (${shortAddr(addr)})`);
     }
 
     function renderContacts() {
       const list = document.getElementById("contactsList");
       list.innerHTML = "";
 
-      // FIXED: Only show contacts that are NOT your own address
       const otherContacts = Object.entries(contacts).filter(([addr]) => addr !== account?.toLowerCase());
 
       otherContacts.forEach(([addr, name]) => {
@@ -433,7 +405,6 @@
         container.appendChild(meChip);
       }
 
-      // FIXED: Only show OTHER people (not yourself)
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -459,7 +430,6 @@
         container.appendChild(meChip);
       }
 
-      // FIXED: Only show OTHER people (not yourself)
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -521,26 +491,19 @@
 
     // ========== WALLET CONNECTION ==========
     async function connectWallet() {
-      log("Connecting wallet...");
-
       if (!window.ethereum) {
         showStatus("connectStatus", "MetaMask not found!", "error");
         return;
       }
 
       try {
-        readProvider = new ethers.providers.JsonRpcProvider(BASE_RPC);
-        log("Read provider connected to Base RPC");
-
-        writeProvider = new ethers.providers.Web3Provider(window.ethereum);
-        await writeProvider.send("eth_requestAccounts", []);
-        signer = writeProvider.getSigner();
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
         account = await signer.getAddress();
-        log(`Wallet connected: ${shortAddr(account)}`);
 
-        const network = await writeProvider.getNetwork();
+        const network = await provider.getNetwork();
         if (network.chainId !== 8453) {
-          log("Wrong network, switching to Base...");
           try {
             await window.ethereum.request({
               method: "wallet_switchEthereumChain",
@@ -554,14 +517,11 @@
           }
         }
 
-        readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
-        writeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
-        log("Contracts initialized");
 
         loadContacts();
 
-        // FIXED: Remove yourself from contacts if you exist
         const myAddr = account.toLowerCase();
         if (contacts[myAddr]) {
           delete contacts[myAddr];
@@ -586,10 +546,7 @@
         renderAll();
         await refreshBalances();
 
-        log("✅ Ready! Add contacts and record expenses.");
-
       } catch (e) {
-        log(`Error: ${e.message}`);
         showStatus("connectStatus", e.message, "error");
       }
     }
@@ -598,8 +555,6 @@
     async function addExpense() {
       const amountInput = document.getElementById("expenseAmount").value;
       const category = document.getElementById("expenseCategory").value;
-
-      log("=== ADDING EXPENSE ===");
 
       if (!amountInput || parseFloat(amountInput) <= 0) {
         showStatus("expenseStatus", "Enter a valid amount", "error");
@@ -627,23 +582,15 @@
       const payerChecksum = ethers.utils.getAddress(selectedPayer);
       const participantsChecksum = participants.map(p => ethers.utils.getAddress(p));
 
-      log(`Amount: ${amountInput} USDC`);
-      log(`Category: ${category}`);
-      log(`Payer: ${getContactName(selectedPayer)} (${shortAddr(selectedPayer)})`);
-      log(`Participants (who owe): ${participants.map(p => getContactName(p)).join(", ")}`);
-
       const btn = document.getElementById("addExpenseBtn");
       btn.disabled = true;
       showStatus("expenseStatus", "Sending transaction...", "info");
 
       try {
-        log("Calling contract.addExpense()...");
-        const tx = await writeContract.addExpense(amount, payerChecksum, participantsChecksum, category);
-        log(`TX sent: ${tx.hash}`);
+        const tx = await contract.addExpense(amount, payerChecksum, participantsChecksum, category);
         showStatus("expenseStatus", "Waiting for confirmation...", "info");
 
-        const receipt = await tx.wait();
-        log(`✅ Confirmed in block ${receipt.blockNumber}`);
+        await tx.wait();
 
         showStatus("expenseStatus", `✅ Expense recorded!`, "success");
 
@@ -660,12 +607,10 @@
           }
         }
 
-        log("Waiting 3s for blockchain state update...");
         await new Promise(r => setTimeout(r, 3000));
         await refreshBalances();
 
       } catch (e) {
-        log(`❌ Error: ${e.reason || e.message}`);
         showStatus("expenseStatus", `Error: ${e.reason || e.message}`, "error");
       } finally {
         btn.disabled = false;
@@ -674,53 +619,41 @@
 
     // ========== REFRESH BALANCES ==========
     async function refreshBalances() {
-      log("=== REFRESHING BALANCES ===");
       const list = document.getElementById("balancesList");
       list.innerHTML = "<p>Loading...</p>";
 
       const balances = [];
-
-      // FIXED: Only check contacts that are NOT your own address
       const contactAddrs = Object.keys(contacts).filter(a => a !== account.toLowerCase());
 
       if (contactAddrs.length === 0) {
         list.innerHTML = "<p style='color:#888;'>Add contacts to see balances with them.</p>";
-        log("No contacts to check");
         return;
       }
-
-      log(`Checking ${contactAddrs.length} contacts × ${CATEGORIES.length} categories...`);
 
       for (const contactAddr of contactAddrs) {
         for (const category of CATEGORIES) {
           try {
-            await new Promise(r => setTimeout(r, 80));
+            await new Promise(r => setTimeout(r, 100));
 
             const contactChecksum = ethers.utils.getAddress(contactAddr);
             const accountChecksum = ethers.utils.getAddress(account);
 
-            const theyOweUs = await readContract.getBalance(contactChecksum, accountChecksum, category);
-            const weOweThem = await readContract.getBalance(accountChecksum, contactChecksum, category);
+            const theyOweUs = await contract.getBalance(contactChecksum, accountChecksum, category);
+            const weOweThem = await contract.getBalance(accountChecksum, contactChecksum, category);
 
             if (!theyOweUs.isZero()) {
-              const amt = ethers.utils.formatUnits(theyOweUs, 6);
-              log(`✓ ${getContactName(contactAddr)} owes you ${amt} USDC (${category})`);
               balances.push({ contact: contactAddr, category, type: "credit", amount: theyOweUs });
             }
 
             if (!weOweThem.isZero()) {
-              const amt = ethers.utils.formatUnits(weOweThem, 6);
-              log(`✓ You owe ${getContactName(contactAddr)} ${amt} USDC (${category})`);
               balances.push({ contact: contactAddr, category, type: "debt", amount: weOweThem });
             }
 
           } catch (e) {
-            log(`⚠ Error ${shortAddr(contactAddr)}/${category}: ${e.message}`);
+            console.error(`Error checking ${contactAddr}/${category}:`, e);
           }
         }
       }
-
-      log(`Found ${balances.length} active balances`);
 
       if (balances.length === 0) {
         list.innerHTML = "<p style='color:#888;'>✨ All settled up! No outstanding balances.</p>";
@@ -739,16 +672,53 @@
           card.innerHTML = `
             <div class="balance-amount positive">+ ${amountStr} USDC</div>
             <div class="balance-details">${contactName} owes you • ${b.category}</div>
+            <button class="btn-secondary" style="margin-top:10px;width:auto;padding:8px 16px;" 
+              onclick="adjustBalancePrompt('${b.contact}', '${b.category}', '${amountStr}')">
+              ✏️ Adjust
+            </button>
           `;
         } else {
           card.innerHTML = `
             <div class="balance-amount negative">- ${amountStr} USDC</div>
             <div class="balance-details">You owe ${contactName} • ${b.category}</div>
-            <button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="settleBalance('${b.contact}', '${b.category}')">Pay Now</button>
+            <button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" 
+              onclick="settleBalance('${b.contact}', '${b.category}')">
+              💳 Pay Now
+            </button>
           `;
         }
 
         list.appendChild(card);
+      }
+    }
+
+    // ========== ADJUST BALANCE ==========
+    async function adjustBalancePrompt(debtor, category, currentAmountStr) {
+      const name = getContactName(debtor);
+      const input = prompt(
+        `Set new amount that ${name} owes you for ${category}.\n` +
+        `(Current: ${currentAmountStr} USDC)\nEnter 0 to clear:`,
+        currentAmountStr
+      );
+      if (input === null) return;
+
+      const value = parseFloat(input);
+      if (isNaN(value) || value < 0) {
+        alert("Enter a non-negative number.");
+        return;
+      }
+
+      try {
+        const debtorChecksum = ethers.utils.getAddress(debtor);
+        const newAmount = ethers.utils.parseUnits(value.toString(), 6);
+
+        const tx = await contract.adjustBalance(debtorChecksum, newAmount, category);
+        await tx.wait();
+
+        await new Promise(r => setTimeout(r, 2000));
+        await refreshBalances();
+      } catch (e) {
+        alert("Adjust failed: " + (e.reason || e.message));
       }
     }
 
@@ -757,24 +727,18 @@
       const name = getContactName(creditor);
       if (!confirm(`Pay your ${category} balance to ${name}?`)) return;
 
-      log(`Settling ${category} with ${name}...`);
-
       try {
         const creditorChecksum = ethers.utils.getAddress(creditor);
-        const balance = await readContract.getBalance(account, creditorChecksum, category);
+        const balance = await contract.getBalance(account, creditorChecksum, category);
         const allowance = await usdcContract.allowance(account, CONTRACT_ADDRESS);
 
         if (allowance.lt(balance)) {
-          log("Approving USDC...");
           const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
           await approveTx.wait();
-          log("USDC approved");
         }
 
-        const tx = await writeContract.settle(creditorChecksum, category);
-        log(`TX sent: ${tx.hash}`);
+        const tx = await contract.settle(creditorChecksum, category);
         await tx.wait();
-        log("✅ Settled!");
 
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
@@ -786,7 +750,6 @@
         `;
 
       } catch (e) {
-        log(`❌ Error: ${e.reason || e.message}`);
         alert("Settlement failed: " + (e.reason || e.message));
       }
     }
@@ -806,12 +769,6 @@
         document.getElementById("newContactName").value = "";
       } else {
         alert("Enter an address");
-      }
-    };
-
-    window.onload = () => {
-      if (window.ethereum) {
-        log("MetaMask detected. Click Connect to start.");
       }
     };
   </script>
