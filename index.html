@@ -578,6 +578,12 @@
       if (stored) {
         try {
           contacts = JSON.parse(stored);
+          // FIX: Normalize all contacts to lowercase
+          const normalized = {};
+          for (const [addr, name] of Object.entries(contacts)) {
+            normalized[addr.toLowerCase()] = name;
+          }
+          contacts = normalized;
         } catch(e) {
           console.error("Failed to load contacts", e);
           contacts = {};
@@ -618,8 +624,9 @@
     }
     
     function addContact(address, name) {
-      const addr = address.toLowerCase();
+      const addr = address.toLowerCase(); // FIX: Always store lowercase
       if (!name || name.trim() === "") return toast("⚠️ Name required");
+      if (!ethers.utils.isAddress(addr)) return toast("⚠️ Invalid address");
       contacts[addr] = name.trim();
       saveContacts();
       renderContacts();
@@ -876,6 +883,17 @@
 
         statusEl.innerHTML = `✅ Expense recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
 
+        // FIX: Auto-add participants as contacts
+        for (const p of participants) {
+          const pLower = p.toLowerCase();
+          if (!contacts[pLower]) {
+            const name = prompt(`Add ${shortAddr(p)} to contacts as:`, shortAddr(p));
+            if (name) {
+              addContact(p, name);
+            }
+          }
+        }
+
         document.getElementById("amount").value = "";
         document.getElementById("participants").value = "";
         document.getElementById("expenseDesc").value = "";
@@ -1006,8 +1024,12 @@
           
           for (const category of ALL_CATEGORIES) {
             try {
-              const debtToUs = await contract.getBalance(contactAddr, account, category);
-              const debtToThem = await contract.getBalance(account, contactAddr, category);
+              // FIX: Use checksum addresses for contract calls
+              const checksumContact = ethers.utils.getAddress(contactAddr);
+              const checksumAccount = ethers.utils.getAddress(account);
+              
+              const debtToUs = await contract.getBalance(checksumContact, checksumAccount, category);
+              const debtToThem = await contract.getBalance(checksumAccount, checksumContact, category);
               
               if (!debtToUs.isZero()) {
                 balancesList.push({
