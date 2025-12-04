@@ -346,12 +346,17 @@
     }
 
     function getContactName(addr) {
-      return contacts[addr.toLowerCase()] || shortAddr(addr);
+      const normalized = addr.toLowerCase();
+      // Don't return "Me" for your own address, return the actual contact name if it exists
+      if (normalized === account?.toLowerCase()) {
+        return "Me";
+      }
+      return contacts[normalized] || shortAddr(addr);
     }
 
     // ========== CONTACTS ==========
     function loadContacts() {
-      const stored = localStorage.getItem("settleup_contacts_v3");
+      const stored = localStorage.getItem("settleup_contacts_v4");
       if (stored) {
         try {
           contacts = JSON.parse(stored);
@@ -362,7 +367,7 @@
     }
 
     function saveContacts() {
-      localStorage.setItem("settleup_contacts_v3", JSON.stringify(contacts));
+      localStorage.setItem("settleup_contacts_v4", JSON.stringify(contacts));
     }
 
     function addContact(addr, name) {
@@ -371,6 +376,13 @@
         return;
       }
       const normalized = addr.toLowerCase();
+
+      // Don't allow adding yourself as a contact with a different name
+      if (normalized === account?.toLowerCase()) {
+        alert("You can't add yourself as a contact!");
+        return;
+      }
+
       contacts[normalized] = name || shortAddr(addr);
       saveContacts();
       renderAll();
@@ -381,8 +393,10 @@
       const list = document.getElementById("contactsList");
       list.innerHTML = "";
 
-      Object.entries(contacts).forEach(([addr, name]) => {
-        if (addr === account?.toLowerCase()) return;
+      // FIXED: Only show contacts that are NOT your own address
+      const otherContacts = Object.entries(contacts).filter(([addr]) => addr !== account?.toLowerCase());
+
+      otherContacts.forEach(([addr, name]) => {
         const div = document.createElement("div");
         div.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;";
         div.innerHTML = `
@@ -392,7 +406,7 @@
         list.appendChild(div);
       });
 
-      if (Object.keys(contacts).filter(a => a !== account?.toLowerCase()).length === 0) {
+      if (otherContacts.length === 0) {
         list.innerHTML = "<p style='color:#888;font-size:14px;'>No contacts yet. Add friends to split bills with!</p>";
       }
     }
@@ -419,6 +433,7 @@
         container.appendChild(meChip);
       }
 
+      // FIXED: Only show OTHER people (not yourself)
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -444,6 +459,7 @@
         container.appendChild(meChip);
       }
 
+      // FIXED: Only show OTHER people (not yourself)
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -545,8 +561,10 @@
 
         loadContacts();
 
-        if (!contacts[account.toLowerCase()]) {
-          contacts[account.toLowerCase()] = "Me";
+        // FIXED: Remove yourself from contacts if you exist
+        const myAddr = account.toLowerCase();
+        if (contacts[myAddr]) {
+          delete contacts[myAddr];
           saveContacts();
         }
 
@@ -634,7 +652,7 @@
         renderAll();
 
         for (const p of participants) {
-          if (!contacts[p.toLowerCase()] || contacts[p.toLowerCase()] === shortAddr(p)) {
+          if (!contacts[p.toLowerCase()]) {
             const name = prompt(`Save ${shortAddr(p)} as contact:`, shortAddr(p));
             if (name && name.trim()) {
               addContact(p, name.trim());
@@ -661,6 +679,8 @@
       list.innerHTML = "<p>Loading...</p>";
 
       const balances = [];
+
+      // FIXED: Only check contacts that are NOT your own address
       const contactAddrs = Object.keys(contacts).filter(a => a !== account.toLowerCase());
 
       if (contactAddrs.length === 0) {
