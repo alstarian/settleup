@@ -1,1927 +1,1105 @@
- <!DOCTYPE html>
-
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8" />
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>SettleUp - Split Bills in USDC</title>
-
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
   <style>
-
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    
-
     * {
-
       margin: 0;
-
       padding: 0;
-
       box-sizing: border-box;
-
     }
-
-    
 
     body {
-
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
       min-height: 100vh;
-
       padding: 20px;
-
       color: #1f2937;
-
     }
-
-    
 
     .container {
-
       max-width: 480px;
-
       margin: 0 auto;
-
     }
-
-    
 
     .header {
-
       text-align: center;
-
       margin-bottom: 32px;
-
       animation: fadeIn 0.6s ease-out;
-
     }
-
-    
 
     .logo {
-
       font-size: 48px;
-
       margin-bottom: 8px;
-
     }
-
-    
 
     h1 {
-
       color: white;
-
       font-size: 32px;
-
       font-weight: 700;
-
       margin-bottom: 8px;
-
       text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-
     }
-
-    
 
     .subtitle {
-
       color: rgba(255,255,255,0.9);
-
       font-size: 14px;
-
     }
-
-    
 
     .card {
-
       background: white;
-
       border-radius: 24px;
-
       padding: 28px;
-
       margin-bottom: 20px;
-
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-
       animation: slideUp 0.6s ease-out;
-
     }
-
-    
 
     @keyframes fadeIn {
-
       from { opacity: 0; transform: translateY(-20px); }
-
       to { opacity: 1; transform: translateY(0); }
-
     }
-
-    
 
     @keyframes slideUp {
-
       from { opacity: 0; transform: translateY(30px); }
-
       to { opacity: 1; transform: translateY(0); }
-
     }
-
-    
 
     .wallet-status {
-
       display: flex;
-
       align-items: center;
-
       justify-content: space-between;
-
       padding: 16px;
-
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-
       border-radius: 16px;
-
       margin-bottom: 24px;
-
       border: 2px solid #86efac;
-
     }
-
-    
 
     .wallet-info {
-
       display: flex;
-
       flex-direction: column;
-
       gap: 4px;
-
     }
-
-    
 
     .wallet-address {
-
       font-weight: 600;
-
       color: #15803d;
-
       font-size: 14px;
-
     }
-
-    
 
     .usdc-balance {
-
       font-size: 12px;
-
       color: #16a34a;
-
     }
-
-    
 
     .status-dot {
-
       width: 8px;
-
       height: 8px;
-
       background: #22c55e;
-
       border-radius: 50%;
-
       animation: pulse 2s infinite;
-
     }
-
-    
 
     @keyframes pulse {
-
       0%, 100% { opacity: 1; }
-
       50% { opacity: 0.5; }
-
     }
-
-    
 
     .section-title {
-
       font-size: 18px;
-
       font-weight: 700;
-
       color: #111827;
-
       margin-bottom: 16px;
-
       display: flex;
-
       align-items: center;
-
       gap: 8px;
-
     }
-
-    
 
     .input-group {
-
       margin-bottom: 20px;
-
     }
-
-    
 
     label {
-
       display: block;
-
       font-size: 13px;
-
       font-weight: 600;
-
       color: #6b7280;
-
       margin-bottom: 8px;
-
       text-transform: uppercase;
-
       letter-spacing: 0.5px;
-
     }
 
-    
-
-    input {
-
+    input, select {
       width: 100%;
-
       padding: 14px 16px;
-
       border: 2px solid #e5e7eb;
-
       border-radius: 12px;
-
       font-size: 16px;
-
       font-family: inherit;
-
       transition: all 0.2s;
-
       background: #f9fafb;
-
     }
 
-    
-
-    input:focus {
-
+    input:focus, select:focus {
       outline: none;
-
       border-color: #667eea;
-
       background: white;
-
       box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-
     }
-
-    
 
     input::placeholder {
-
       color: #9ca3af;
-
     }
-
-    
 
     button {
-
       width: 100%;
-
       padding: 16px;
-
       border: none;
-
       border-radius: 12px;
-
       font-size: 16px;
-
       font-weight: 600;
-
       font-family: inherit;
-
       cursor: pointer;
-
       transition: all 0.2s;
-
       display: flex;
-
       align-items: center;
-
       justify-content: center;
-
       gap: 8px;
-
     }
-
-    
 
     .btn-primary {
-
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
       color: white;
-
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-
     }
-
-    
 
     .btn-primary:hover:not(:disabled) {
-
       transform: translateY(-2px);
-
       box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-
     }
-
-    
 
     .btn-secondary {
-
       background: #f3f4f6;
-
       color: #374151;
-
       padding: 12px 16px;
-
       width: auto;
-
       margin: 0 6px 6px 0;
-
       font-size: 14px;
-
     }
-
-    
 
     .btn-secondary:hover:not(:disabled) {
-
       background: #e5e7eb;
-
     }
-
-    
 
     .btn-approve {
-
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-
       color: white;
-
       margin-bottom: 16px;
-
     }
-
-    
 
     button:disabled {
-
       opacity: 0.5;
-
       cursor: not-allowed;
-
       transform: none !important;
-
     }
-
-    
 
     .contacts-section {
-
       background: #f9fafb;
-
       border-radius: 16px;
-
       padding: 16px;
-
       margin-bottom: 20px;
-
     }
-
-    
 
     .contacts-list {
-
       display: flex;
-
       flex-wrap: wrap;
-
       gap: 8px;
-
       margin-bottom: 12px;
-
     }
-
-    
 
     .contact-btn {
-
       background: white;
-
       border: 2px solid #e5e7eb;
-
       padding: 10px 16px;
-
       border-radius: 12px;
-
       font-size: 14px;
-
       font-weight: 500;
-
       cursor: pointer;
-
       transition: all 0.2s;
-
       color: #374151;
-
       position: relative;
-
     }
-
-    
 
     .contact-btn:hover {
-
       border-color: #667eea;
-
       background: #f3f4f6;
-
       transform: translateY(-1px);
-
     }
-
-    
 
     .contact-btn.you {
-
       background: #dbeafe;
-
       border-color: #3b82f6;
-
       color: #1e40af;
-
       font-weight: 600;
-
     }
-
-    
 
     .contact-btn .delete-icon {
-
       position: absolute;
-
       top: -8px;
-
       right: -8px;
-
       background: #dc2626;
-
       color: white;
-
       border-radius: 50%;
-
       width: 24px;
-
       height: 24px;
-
       display: flex;
-
       align-items: center;
-
       justify-content: center;
-
       font-size: 14px;
-
       cursor: pointer;
-
       opacity: 0;
-
       transition: opacity 0.2s;
-
       border: 2px solid white;
-
     }
-
-    
 
     .contact-btn:hover .delete-icon {
-
       opacity: 1;
-
     }
-
-    
 
     .add-contact-btn {
-
       background: #10b981;
-
       color: white;
-
       border: none;
-
     }
-
-    
 
     .add-contact-btn:hover {
-
       background: #059669;
-
     }
-
-    
 
     .toast {
-
       position: fixed;
-
       bottom: 24px;
-
       left: 50%;
-
       transform: translateX(-50%);
-
       background: #1f2937;
-
       color: white;
-
       padding: 16px 24px;
-
       border-radius: 12px;
-
       font-size: 14px;
-
       font-weight: 500;
-
       box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-
       z-index: 1000;
-
       animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
-
       max-width: 90%;
-
     }
-
-    
 
     @keyframes toastIn {
-
       from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
-
     }
-
-    
 
     @keyframes toastOut {
-
       to { opacity: 0; transform: translateX(-50%) translateY(20px); }
-
     }
-
-    
 
     .balance-item {
-
       display: flex;
-
       justify-content: space-between;
-
       align-items: center;
-
       padding: 16px;
-
       background: #f9fafb;
-
       border: 2px solid #e5e7eb;
-
       border-radius: 12px;
-
       margin-bottom: 12px;
-
       transition: all 0.2s;
-
     }
-
-    
 
     .balance-item:hover {
-
       border-color: #d1d5db;
-
       background: white;
-
     }
-
-    
 
     .balance-info {
-
       flex: 1;
-
     }
-
-    
 
     .balance-amount {
-
       font-size: 18px;
-
       font-weight: 700;
-
       margin-bottom: 4px;
-
     }
-
-    
 
     .balance-amount.positive {
-
       color: #15803d;
-
     }
-
-    
 
     .balance-amount.negative {
-
       color: #dc2626;
-
     }
-
-    
 
     .balance-name {
-
       font-size: 14px;
-
       color: #6b7280;
-
       font-weight: 500;
-
     }
-
-    
 
     .btn-settle {
-
       padding: 10px 20px;
-
       background: #10b981;
-
       color: white;
-
       border-radius: 8px;
-
       font-size: 14px;
-
       font-weight: 600;
-
       width: auto;
-
     }
-
-    
 
     .btn-settle:hover {
-
       background: #059669;
-
     }
-
-    
 
     .empty-state {
-
       text-align: center;
-
       padding: 40px 20px;
-
       color: #9ca3af;
-
     }
-
-    
 
     .empty-state-icon {
-
       font-size: 48px;
-
       margin-bottom: 16px;
-
       opacity: 0.5;
-
     }
 
+    .category-select {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .category-chip {
+      padding: 8px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 20px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .category-chip:hover {
+      border-color: #667eea;
+    }
+
+    .category-chip.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
   </style>
-
 </head>
-
 <body>
-
   <div class="container">
-
     <div class="header">
-
       <div class="logo">💰</div>
-
       <h1>SettleUp</h1>
-
       <p class="subtitle">Split bills seamlessly on Base</p>
-
     </div>
-
 
     <div class="card">
-
       <button id="connectWallet" class="btn-primary">
-
         🔗 Connect Wallet
-
       </button>
-
-      
 
       <div id="walletStatus" style="display:none;">
-
         <div class="wallet-status">
-
           <div class="wallet-info">
-
             <div class="wallet-address" id="walletAddress"></div>
-
             <div class="usdc-balance" id="usdcBalance"></div>
-
           </div>
-
           <div class="status-dot"></div>
-
         </div>
-
-        
 
         <button id="approveUSDC" class="btn-approve" style="display:none;">
-
           ⚡ Approve USDC
-
         </button>
-
 
         <div class="contacts-section">
-
           <h2 class="section-title" style="margin-bottom: 12px;">👥 Your Contacts</h2>
-
           <div class="contacts-list" id="contactsList"></div>
-
           <button id="addContactBtn" class="add-contact-btn" style="width: 100%; padding: 12px;">+ Add Contact</button>
-
         </div>
-
       </div>
-
     </div>
-
 
     <div class="card" id="addExpenseCard" style="display:none;">
-
       <h2 class="section-title">
-
         <span>📝</span> Add Expense
-
       </h2>
 
-
       <div class="input-group">
-
         <label>Amount (USDC)</label>
-
         <input type="number" inputmode="decimal" step="0.01" id="amount" placeholder="30.00" />
-
       </div>
 
-
       <div class="input-group">
-
         <label>Payer (Who Paid)</label>
-
         <input type="text" id="payer" placeholder="Click a contact or enter address" />
-
       </div>
 
-
       <div class="input-group">
-
         <label>Participants (Who Owe)</label>
-
         <input type="text" id="participants" placeholder="Click contacts or enter addresses" />
-
       </div>
-
 
       <div class="input-group">
-
-        <label>Description (Category)</label>
-
-        <input type="text" id="expenseDesc" placeholder="movie, dinner, groceries, etc." />
-
+        <label>Category</label>
+        <div class="category-select" id="categorySelect">
+          <span class="category-chip selected" data-category="Food">🍕 Food</span>
+          <span class="category-chip" data-category="Transport">🚗 Transport</span>
+          <span class="category-chip" data-category="Entertainment">🎬 Entertainment</span>
+          <span class="category-chip" data-category="Utilities">💡 Utilities</span>
+          <span class="category-chip" data-category="Other">📦 Other</span>
+        </div>
+        <input type="text" id="expenseDesc" placeholder="Or type custom category..." style="margin-top: 8px;" />
       </div>
-
 
       <button id="addExpense" class="btn-primary">
-
         💳 Record Expense
-
       </button>
-
-      
 
       <div id="addExpenseStatus"></div>
-
     </div>
-
 
     <div class="card" id="adjustCard" style="display:none;">
-
       <h2 class="section-title">
-
         <span>🔧</span> Adjust Balance
-
       </h2>
 
-      
-
       <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #1e40af; line-height: 1.5;">
-
         <strong>Note:</strong> Correct a balance if you recorded the wrong amount. Only you can adjust what others owe you.
-
       </div>
 
-
       <div class="input-group">
-
         <label>Person (Who Owes You)</label>
-
         <input type="text" id="adjustDebtor" placeholder="Click a contact or enter address" />
-
       </div>
-
 
       <div class="input-group">
-
-        <label>New Amount (USDC)</label>
-
-        <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
-
+        <label>Category</label>
+        <select id="adjustCategory">
+          <option value="Food">🍕 Food</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Entertainment">🎬 Entertainment</option>
+          <option value="Utilities">💡 Utilities</option>
+          <option value="Other">📦 Other</option>
+        </select>
       </div>
 
+      <div class="input-group">
+        <label>New Amount (USDC)</label>
+        <input type="number" inputmode="decimal" step="0.01" id="adjustAmount" placeholder="0.00" />
+      </div>
 
       <button id="adjustBalance" class="btn-primary">
-
         🔧 Update Balance
-
       </button>
 
-      
-
       <div id="adjustStatus"></div>
-
     </div>
-
 
     <div class="card" id="balancesCard" style="display:none;">
-
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-
         <h2 class="section-title" style="margin: 0;">
-
           <span>💵</span> Balances
-
         </h2>
-
         <button id="refreshBalances" class="btn-secondary">
-
           🔄 Refresh
-
         </button>
-
       </div>
-
-      
 
       <div id="balances">
-
         <div class="empty-state">
-
           <div class="empty-state-icon">📊</div>
-
           <p>Connect wallet to view balances</p>
-
         </div>
-
       </div>
-
     </div>
-
   </div>
 
-
   <script>
-
     const contractAddress = "0xf6b491763ca2e099bb6c9d3e573524c426152aeb";
-
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
+    // FIX: Define all categories to query - these must match exactly what's used when adding expenses
+    const ALL_CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"];
 
     const contractABI = [
-
       { "inputs": [{ "internalType": "address", "name": "usdcAddress", "type": "address" }], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-
       { "inputs": [
-
           { "internalType": "uint256", "name": "amount", "type": "uint256" },
-
           { "internalType": "address", "name": "payer", "type": "address" },
-
           { "internalType": "address[]", "name": "participants", "type": "address[]" },
-
           { "internalType": "string", "name": "category", "type": "string" }
-
         ], "name": "addExpense", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-
       { "inputs": [{ "internalType": "address", "name": "creditor", "type": "address" }, { "internalType": "string", "name": "category", "type": "string" }], "name": "settle", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-
       { "inputs": [
-
           { "internalType": "address", "name": "debtor", "type": "address" },
-
           { "internalType": "uint256", "name": "newAmount", "type": "uint256" },
-
           { "internalType": "string", "name": "category", "type": "string" }
-
         ], "name": "adjustBalance", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-
       { "inputs": [
-
           { "internalType": "address", "name": "debtor", "type": "address" },
-
           { "internalType": "address", "name": "creditor", "type": "address" },
-
           { "internalType": "string", "name": "category", "type": "string" }
-
         ], "name": "getBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
-
     ];
 
-
     let provider, signer, contract, account, usdcContract;
-
     let contacts = {};
-
+    let selectedCategory = "Food"; // Default category
 
     function shortAddr(addr) { return addr.slice(0,6) + '...' + addr.slice(-4); }
 
-    
-
     function toast(msg) { 
-
       const el = document.createElement('div'); 
-
       el.className = 'toast'; 
-
       el.textContent = msg; 
-
       document.body.appendChild(el); 
-
       setTimeout(() => el.remove(), 3000); 
-
     }
-
-    
 
     function loadContacts() {
-
       const stored = localStorage.getItem("settleup-contacts");
-
       if (stored) {
-
         try {
-
           contacts = JSON.parse(stored);
-
         } catch(e) {
-
           console.error("Failed to load contacts", e);
-
           contacts = {};
-
         }
-
       }
-
     }
-
-    
 
     function saveContacts() {
-
       localStorage.setItem("settleup-contacts", JSON.stringify(contacts));
-
     }
 
-    
+    // FIX: Load custom categories from localStorage
+    function loadCustomCategories() {
+      const stored = localStorage.getItem("settleup-custom-categories");
+      if (stored) {
+        try {
+          const custom = JSON.parse(stored);
+          custom.forEach(cat => {
+            if (!ALL_CATEGORIES.includes(cat)) {
+              ALL_CATEGORIES.push(cat);
+            }
+          });
+        } catch(e) {
+          console.error("Failed to load custom categories", e);
+        }
+      }
+    }
+
+    // FIX: Save custom category
+    function saveCustomCategory(category) {
+      if (!ALL_CATEGORIES.includes(category)) {
+        ALL_CATEGORIES.push(category);
+        const custom = JSON.parse(localStorage.getItem("settleup-custom-categories") || "[]");
+        if (!custom.includes(category)) {
+          custom.push(category);
+          localStorage.setItem("settleup-custom-categories", JSON.stringify(custom));
+        }
+      }
+    }
 
     function addContact(address, name) {
-
       const addr = address.toLowerCase();
-
       if (!name || name.trim() === "") return toast("⚠️ Name required");
-
       contacts[addr] = name.trim();
-
       saveContacts();
-
       renderContacts();
-
       toast(`✅ Added ${name}`);
-
     }
-
-    
 
     function deleteContact(address) {
-
       const addr = address.toLowerCase();
-
       if (addr === account.toLowerCase()) {
-
         return toast("❌ Can't delete yourself");
-
       }
-
       delete contacts[addr];
-
       saveContacts();
-
       renderContacts();
-
       toast("✅ Deleted");
-
     }
 
-    
-
     function renderContacts() {
-
       const list = document.getElementById("contactsList");
-
       list.innerHTML = "";
-
-      
 
       if (!account) return;
 
-      
-
       const youBtn = document.createElement("button");
-
       youBtn.className = "contact-btn you";
-
       youBtn.textContent = "📍 You";
-
       youBtn.style.pointerEvents = "auto";
-
       youBtn.onclick = (e) => {
-
         e.preventDefault();
-
         document.getElementById("payer").value = account;
-
         toast(`✅ Payer: You`);
-
       };
-
       list.appendChild(youBtn);
 
-      
-
       Object.entries(contacts).forEach(([addr, name]) => {
-
         if (addr === account.toLowerCase()) return;
 
-        
-
         const btn = document.createElement("button");
-
         btn.className = "contact-btn";
-
         btn.style.position = "relative";
 
-        
-
         const deleteIcon = document.createElement("div");
-
         deleteIcon.className = "delete-icon";
-
         deleteIcon.textContent = "✕";
-
         deleteIcon.onclick = (e) => {
-
           e.preventDefault();
-
           e.stopPropagation();
-
           if (confirm(`Delete ${name}?`)) {
-
             deleteContact(addr);
-
           }
-
         };
-
-        
 
         btn.textContent = name;
-
         btn.appendChild(deleteIcon);
 
-        
-
         btn.onclick = (e) => {
-
           e.preventDefault();
-
           const participants = document.getElementById("participants").value.trim();
-
           const arr = participants ? participants.split(",").map(x => x.trim()) : [];
 
-          
-
           if (!arr.map(x => x.toLowerCase()).includes(addr)) {
-
             arr.push(addr);
-
             document.getElementById("participants").value = arr.join(", ");
-
             toast(`✅ Added ${name}`);
-
           } else {
-
             toast("⚠️ Already added");
-
           }
-
         };
 
-        
-
         list.appendChild(btn);
+      });
+    }
 
+    // FIX: Setup category chip selection
+    function setupCategoryChips() {
+      const chips = document.querySelectorAll('.category-chip');
+      chips.forEach(chip => {
+        chip.onclick = () => {
+          chips.forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          selectedCategory = chip.dataset.category;
+          document.getElementById('expenseDesc').value = ''; // Clear custom input
+        };
       });
 
+      // Handle custom category input
+      document.getElementById('expenseDesc').addEventListener('input', (e) => {
+        if (e.target.value.trim()) {
+          document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('selected'));
+          selectedCategory = null; // Will use custom
+        }
+      });
     }
-
 
     async function connectWallet() {
-
       if (!window.ethereum) return toast("⚠️ Please install MetaMask!");
 
-      
-
       const btn = document.getElementById("connectWallet");
-
       btn.disabled = true;
 
-      
-
       try {
-
         provider = new ethers.providers.Web3Provider(window.ethereum);
-
         await provider.send("eth_requestAccounts", []);
-
         signer = provider.getSigner();
-
         account = await signer.getAddress();
-
         contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-
         const net = await provider.getNetwork();
-
         if (net.chainId !== 8453) {
-
           toast("⚠️ Switching to Base Mainnet...");
-
           try {
-
             await window.ethereum.request({ 
-
               method: 'wallet_switchEthereumChain', 
-
               params: [{ chainId: '0x2105' }] 
-
             });
-
             location.reload();
-
             return;
-
           } catch (e) {
-
             toast("❌ Please switch to Base Mainnet manually");
-
             btn.disabled = false;
-
             return;
-
           }
-
         }
-
 
         loadContacts();
-
-        
+        loadCustomCategories();
 
         if (!contacts[account.toLowerCase()]) {
-
           const userName = prompt("What's your name?", "Me");
-
           if (userName) {
-
             addContact(account, userName);
-
           }
-
         }
 
-
         document.getElementById("walletAddress").textContent = shortAddr(account);
-
         document.getElementById("payer").value = account;
-
         document.getElementById("walletStatus").style.display = "block";
-
         document.getElementById("addExpenseCard").style.display = "block";
-
         document.getElementById("adjustCard").style.display = "block";
-
         document.getElementById("balancesCard").style.display = "block";
-
         btn.style.display = "none";
-
 
         renderContacts();
-
+        setupCategoryChips();
         await initUSDC();
-
         await refreshBalances();
 
-
         window.ethereum.on('accountsChanged', () => location.reload());
-
         window.ethereum.on('chainChanged', () => location.reload());
 
-        
-
         toast("✅ Connected successfully!");
-
       } catch (e) { 
-
         toast("❌ Connection failed");
-
         console.error(e);
-
       } finally { 
-
         btn.disabled = false; 
-
       }
-
     }
-
 
     async function initUSDC() {
-
       usdcContract = new ethers.Contract(USDC, [
-
         "function balanceOf(address) view returns (uint256)",
-
         "function allowance(address,address) view returns (uint256)",
-
         "function approve(address,uint256) returns (bool)"
-
       ], signer);
 
-      
-
       const bal = await usdcContract.balanceOf(account);
-
       document.getElementById("usdcBalance").textContent = `💵 ${ethers.utils.formatUnits(bal, 6)} USDC`;
 
-      
-
       const allowance = await usdcContract.allowance(account, contractAddress);
-
       if (allowance.lt(ethers.utils.parseUnits("1000", 6))) {
-
         document.getElementById("approveUSDC").style.display = "block";
-
       }
-
     }
 
-
     document.getElementById("approveUSDC").onclick = async () => {
-
       const btn = document.getElementById("approveUSDC");
-
       btn.disabled = true;
 
-      
-
       try {
-
         const tx = await usdcContract.approve(contractAddress, ethers.constants.MaxUint256);
-
         toast("⏳ Approving USDC...");
-
         await tx.wait();
-
         btn.style.display = "none";
-
         toast("✅ USDC approved!");
-
         await initUSDC();
-
       } catch (e) { 
-
         toast("❌ Approval failed");
-
         console.error(e);
-
       } finally { 
-
         btn.disabled = false; 
-
       }
-
     };
-
 
     document.getElementById("addContactBtn").onclick = () => {
-
       const addr = prompt("Address (0x...):");
-
       if (!addr) return;
 
-      
-
       if (!ethers.utils.isAddress(addr)) {
-
         return toast("❌ Invalid address");
-
       }
-
-      
 
       const name = prompt("Name for this contact:");
-
       if (name) {
-
         addContact(addr, name);
-
       }
-
     };
 
-
     async function addExpense() {
-
       const amountInput = document.getElementById("amount").value.trim();
-
       const payer = document.getElementById("payer").value.trim();
-
       const participantsInput = document.getElementById("participants").value.trim();
-
-      const desc = document.getElementById("expenseDesc").value.trim() || "Expense";
-
+      const customCategory = document.getElementById("expenseDesc").value.trim();
       const statusEl = document.getElementById("addExpenseStatus");
 
+      // FIX: Use selected category chip OR custom input
+      const category = customCategory || selectedCategory || "Other";
 
       if (!amountInput || !payer || !participantsInput) {
-
         return toast("⚠️ Please fill all required fields");
-
       }
-
-      
 
       if (!ethers.utils.isAddress(payer)) {
-
         return toast("⚠️ Invalid payer address");
-
       }
-
 
       const amountFloat = parseFloat(amountInput);
-
       if (isNaN(amountFloat) || amountFloat <= 0) {
-
         return toast("⚠️ Invalid amount");
-
       }
-
 
       const amount = ethers.utils.parseUnits(amountInput, 6);
 
-
       const participants = [...new Set(
-
         participantsInput
-
           .split(",")
-
           .map(a => a.trim())
-
           .filter(a => ethers.utils.isAddress(a) && a.toLowerCase() !== payer.toLowerCase())
-
       )];
 
-
       if (participants.length === 0) {
-
         return toast("⚠️ Add at least one participant");
-
       }
-
 
       const btn = document.getElementById("addExpense");
-
       btn.disabled = true;
-
       statusEl.textContent = "";
-
       statusEl.className = "";
 
-
       try {
+        // FIX: Save custom category for future queries
+        saveCustomCategory(category);
 
-        const tx = await contract.addExpense(amount, payer, participants, desc);
-
-        
+        const tx = await contract.addExpense(amount, payer, participants, category);
 
         statusEl.textContent = "⏳ Confirming transaction...";
-
         statusEl.className = "status-message success";
 
-
         const receipt = await tx.wait();
-
 
         statusEl.innerHTML = `✅ Expense recorded! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
-
         statusEl.className = "status-message success";
-
 
         document.getElementById("amount").value = "";
-
         document.getElementById("participants").value = "";
-
         document.getElementById("expenseDesc").value = "";
 
-
-        toast(`✅ "${desc}" recorded!`);
-
-        
+        toast(`✅ "${category}" expense recorded!`);
 
         setTimeout(refreshBalances, 800);
-
       } catch (e) {
-
         statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
-
         statusEl.className = "status-message error";
-
         toast("❌ Transaction failed");
-
       } finally {
-
         btn.disabled = false;
-
       }
-
     }
 
-
     async function adjustBalanceSubmit() {
-
       const debtorInput = document.getElementById("adjustDebtor").value.trim();
-
       const amountInput = document.getElementById("adjustAmount").value.trim();
-
+      // FIX: Use selected category from dropdown
+      const category = document.getElementById("adjustCategory").value;
       const statusEl = document.getElementById("adjustStatus");
 
-
       if (!debtorInput || amountInput === "") {
-
         return toast("⚠️ Please fill all fields");
-
       }
-
 
       if (!ethers.utils.isAddress(debtorInput)) {
-
         return toast("⚠️ Invalid debtor address");
-
       }
-
 
       const amountFloat = parseFloat(amountInput);
-
       if (isNaN(amountFloat) || amountFloat < 0) {
-
         return toast("⚠️ Invalid amount");
-
       }
 
-
       const newAmount = ethers.utils.parseUnits(amountInput, 6);
-
       const btn = document.getElementById("adjustBalance");
-
       btn.disabled = true;
-
       statusEl.textContent = "";
-
       statusEl.className = "";
 
-
       try {
-
-        const tx = await contract.adjustBalance(debtorInput, newAmount, "Expense");
-
-        
+        // FIX: Use selected category instead of hardcoded "Expense"
+        const tx = await contract.adjustBalance(debtorInput, newAmount, category);
 
         statusEl.textContent = "⏳ Updating balance...";
-
         statusEl.className = "status-message success";
-
 
         const receipt = await tx.wait();
 
-
         statusEl.innerHTML = `✅ Balance updated! <a href="https://basescan.org/tx/${receipt.transactionHash}" target="_blank">View Tx</a>`;
-
         statusEl.className = "status-message success";
 
-
         document.getElementById("adjustDebtor").value = "";
-
         document.getElementById("adjustAmount").value = "";
 
-
         toast("✅ Balance adjusted!");
-
         setTimeout(refreshBalances, 800);
-
       } catch (e) {
-
         statusEl.textContent = "❌ Failed: " + (e.reason || e.message);
-
         statusEl.className = "status-message error";
-
         toast("❌ Adjustment failed");
-
       } finally {
-
         btn.disabled = false;
-
       }
-
     }
 
-
-    async function settleWith(creditor) {
-
+    // FIX: Store category with settlement for proper tracking
+    async function settleWith(creditor, category) {
       const name = contacts[creditor.toLowerCase()] || shortAddr(creditor);
-
-      if (!confirm(`Settle with ${name}?`)) return;
-
-      
+      if (!confirm(`Settle ${category} balance with ${name}?`)) return;
 
       try {
-
-        const tx = await contract.settle(creditor, "Expense");
-
+        // FIX: Use the correct category that was passed
+        const tx = await contract.settle(creditor, category);
         toast("⏳ Settling...");
-
         await tx.wait();
-
         toast("✅ Settled successfully!");
-
         await initUSDC();
-
         refreshBalances();
-
       } catch (e) { 
-
         toast("❌ Settlement failed");
-
         console.error(e);
-
       }
-
     }
-
 
     async function refreshBalances() {
-
       const el = document.getElementById("balances");
-
       const btn = document.getElementById("refreshBalances");
 
-
       if (!contract || !account) {
-
         el.innerHTML = `
-
           <div class="empty-state">
-
             <div class="empty-state-icon">📊</div>
-
             <p>Connect wallet to view balances</p>
-
           </div>
-
         `;
-
         return;
-
       }
 
-
       btn.disabled = true;
-
       el.innerHTML = `
-
         <div class="empty-state">
-
           <div class="empty-state-icon">⏳</div>
-
           <p>Loading balances...</p>
-
         </div>
-
       `;
 
-
       try {
-
-        const balancesMap = {};
-
-        const category = "Expense"; // Make sure this matches what you used when adding expenses
-
-        
-
+        const balancesList = [];
         const contactAddrs = Object.keys(contacts);
 
-        
-
         if (contactAddrs.length === 0) {
-
           el.innerHTML = `
-
             <div class="empty-state">
-
               <div class="empty-state-icon">ℹ️</div>
-
               <p>Add contacts to view balances</p>
-
             </div>
-
           `;
-
           btn.disabled = false;
-
           return;
-
         }
 
-        
-
+        // FIX: Query ALL categories for each contact
         for (const contactAddr of contactAddrs) {
-
           if (contactAddr.toLowerCase() === account.toLowerCase()) continue;
 
-          
+          for (const category of ALL_CATEGORIES) {
+            try {
+              const debtToUs = await contract.getBalance(contactAddr, account, category);
+              const debtToThem = await contract.getBalance(account, contactAddr, category);
 
-          try {
+              if (!debtToUs.isZero()) {
+                balancesList.push({
+                  addr: contactAddr,
+                  category: category,
+                  type: 'credit',
+                  amount: debtToUs
+                });
+              }
 
-            // Query balances - try both directions with the same category
-
-            const debtToUs = await contract.getBalance(contactAddr, account, category);
-
-            const debtToThem = await contract.getBalance(account, contactAddr, category);
-
-            
-
-            console.log(`Balance for ${contactAddr}: We owe them: ${debtToThem.toString()}, They owe us: ${debtToUs.toString()}`);
-
-            
-
-            if (!debtToUs.isZero() || !debtToThem.isZero()) {
-
-              balancesMap[contactAddr] = {
-
-                debtToUs: debtToUs,
-
-                debtToThem: debtToThem
-
-              };
-
+              if (!debtToThem.isZero()) {
+                balancesList.push({
+                  addr: contactAddr,
+                  category: category,
+                  type: 'debt',
+                  amount: debtToThem
+                });
+              }
+            } catch (e) {
+              console.warn(`Could not get balance for ${contactAddr} in category "${category}":`, e.message);
             }
-
-          } catch (e) {
-
-            console.warn(`Could not get balance for ${contactAddr} in category "${category}":`, e.message);
-
           }
-
         }
 
-
-        const entries = Object.entries(balancesMap);
-
-        
-
-        if (entries.length === 0) {
-
+        if (balancesList.length === 0) {
           el.innerHTML = `
-
             <div class="empty-state">
-
               <div class="empty-state-icon">✨</div>
-
               <p>No active balances</p>
-
             </div>
-
           `;
-
           btn.disabled = false;
-
           return;
-
         }
-
 
         let html = '';
 
+        for (const item of balancesList) {
+          const contactName = contacts[item.addr] || shortAddr(item.addr);
+          const val = parseFloat(ethers.utils.formatUnits(item.amount, 6)).toFixed(2);
 
-        for (const [addr, data] of entries) {
-
-          const contactName = contacts[addr] || shortAddr(addr);
-
-          
-
-          if (!data.debtToUs.isZero()) {
-
-            const val = parseFloat(ethers.utils.formatUnits(data.debtToUs, 6)).toFixed(2);
-
+          if (item.type === 'credit') {
             html += `
-
               <div class="balance-item">
-
                 <div class="balance-info">
-
-                  <div class="balance-amount positive">
-
-                    + ${val}
-
-                  </div>
-
+                  <div class="balance-amount positive">+ ${val} USDC</div>
                   <div class="balance-name">${contactName} owes you</div>
-
-                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">Expense</div>
-
+                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">📁 ${item.category}</div>
                 </div>
-
               </div>
-
             `;
-
-          }
-
-          
-
-          if (!data.debtToThem.isZero()) {
-
-            const val = parseFloat(ethers.utils.formatUnits(data.debtToThem, 6)).toFixed(2);
-
+          } else {
             html += `
-
               <div class="balance-item">
-
                 <div class="balance-info">
-
-                  <div class="balance-amount negative">
-
-                    - ${val}
-
-                  </div>
-
+                  <div class="balance-amount negative">- ${val} USDC</div>
                   <div class="balance-name">You owe ${contactName}</div>
-
-                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">Expense</div>
-
+                  <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">📁 ${item.category}</div>
                 </div>
-
-                <button class="btn-settle" onclick="settleWith('${addr}')">Settle</button>
-
+                <button class="btn-settle" onclick="settleWith('${item.addr}', '${item.category}')">Settle</button>
               </div>
-
             `;
-
           }
-
         }
 
-
         el.innerHTML = html;
-
         btn.disabled = false;
-
       } catch (e) {
-
         console.error("Error refreshing balances:", e);
-
         el.innerHTML = `
-
           <div class="empty-state">
-
             <div class="empty-state-icon">⚠️</div>
-
             <p>Failed to load balances</p>
-
           </div>
-
         `;
-
         btn.disabled = false;
-
       }
-
     }
 
-
     document.getElementById("connectWallet").onclick = connectWallet;
-
     document.getElementById("addExpense").onclick = addExpense;
-
     document.getElementById("adjustBalance").onclick = adjustBalanceSubmit;
-
     document.getElementById("refreshBalances").onclick = refreshBalances;
-
   </script>
-
 </body>
-
-</html> 
+</html>
