@@ -184,17 +184,133 @@
 
   <script>
     // ========== CONFIGURATION ==========
-    const CONTRACT_ADDRESS = "0xf6b491763ca2e099bb6c9d3e573524c426152aeb";
+    const CONTRACT_ADDRESS = "0x29197Af93e19dFF75e439aC6f79f3bb7dE7845CD";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const BASE_RPC = "https://mainnet.base.org";
     const CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"];
 
-    // ========== ABI ==========
+    // ========== COMPLETE ABI ==========
     const CONTRACT_ABI = [
-      "function addExpense(uint256 amount, address payer, address[] participants, string category) external",
-      "function getBalance(address debtor, address creditor, string category) external view returns (uint256)",
-      "function settle(address creditor, string category) external",
-      "function adjustBalance(address debtor, uint256 newAmount, string category) external"
+      {
+        "inputs": [{"internalType": "address", "name": "usdcAddress", "type": "address"}],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {"indexed": true, "internalType": "address", "name": "creditor", "type": "address"},
+          {"indexed": true, "internalType": "address", "name": "debtor", "type": "address"},
+          {"indexed": false, "internalType": "uint256", "name": "newAmount", "type": "uint256"},
+          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "BalanceAdjusted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {"indexed": true, "internalType": "address", "name": "payer", "type": "address"},
+          {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
+          {"indexed": false, "internalType": "address[]", "name": "participants", "type": "address[]"},
+          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "ExpenseAdded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {"indexed": true, "internalType": "address", "name": "debtor", "type": "address"},
+          {"indexed": true, "internalType": "address", "name": "creditor", "type": "address"},
+          {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
+          {"indexed": false, "internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "Settled",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {"internalType": "uint256", "name": "amount", "type": "uint256"},
+          {"internalType": "address", "name": "payer", "type": "address"},
+          {"internalType": "address[]", "name": "participants", "type": "address[]"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "addExpense",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "debtor", "type": "address"},
+          {"internalType": "uint256", "name": "newAmount", "type": "uint256"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "adjustBalance",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "", "type": "address"},
+          {"internalType": "address", "name": "", "type": "address"},
+          {"internalType": "string", "name": "", "type": "string"}
+        ],
+        "name": "balances",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "debtor", "type": "address"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "creditFrom",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "creditor", "type": "address"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "debtTo",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "debtor", "type": "address"},
+          {"internalType": "address", "name": "creditor", "type": "address"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "getBalance",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "creditor", "type": "address"},
+          {"internalType": "string", "name": "category", "type": "string"}
+        ],
+        "name": "settle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "usdc",
+        "outputs": [{"internalType": "contract IERC20", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
 
     const USDC_ABI = [
@@ -208,7 +324,7 @@
     let account = null;
     let contacts = {};
     let selectedPayer = null;
-    let selectedSplitters = []; // People who SHARE the bill (includes payer)
+    let selectedSplitters = [];
 
     // ========== LOGGING ==========
     function log(msg) {
@@ -266,7 +382,7 @@
       list.innerHTML = "";
 
       Object.entries(contacts).forEach(([addr, name]) => {
-        if (addr === account?.toLowerCase()) return; // Don't show self in contacts list
+        if (addr === account?.toLowerCase()) return;
         const div = document.createElement("div");
         div.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;";
         div.innerHTML = `
@@ -292,7 +408,6 @@
       const container = document.getElementById("payerChips");
       container.innerHTML = "";
 
-      // Add "Me" chip first
       if (account) {
         const meChip = document.createElement("span");
         meChip.className = "contact-chip" + (selectedPayer === account.toLowerCase() ? " selected" : "");
@@ -304,7 +419,6 @@
         container.appendChild(meChip);
       }
 
-      // Add contact chips
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -322,7 +436,6 @@
       const container = document.getElementById("participantChips");
       container.innerHTML = "";
 
-      // Add "Me" chip first
       if (account) {
         const meChip = document.createElement("span");
         meChip.className = "contact-chip" + (selectedSplitters.includes(account.toLowerCase()) ? " selected" : "");
@@ -331,7 +444,6 @@
         container.appendChild(meChip);
       }
 
-      // Add contact chips
       Object.entries(contacts).forEach(([addr, name]) => {
         if (addr === account?.toLowerCase()) return;
         const chip = document.createElement("span");
@@ -365,7 +477,6 @@
       const share = amount / selectedSplitters.length;
       const payerName = getContactName(selectedPayer);
 
-      // People who owe the payer = splitters who are NOT the payer
       const debtors = selectedSplitters.filter(addr => addr !== selectedPayer);
 
       if (debtors.length === 0) {
@@ -402,18 +513,15 @@
       }
 
       try {
-        // Setup read provider (public RPC - no rate limits)
         readProvider = new ethers.providers.JsonRpcProvider(BASE_RPC);
         log("Read provider connected to Base RPC");
 
-        // Setup write provider (MetaMask)
         writeProvider = new ethers.providers.Web3Provider(window.ethereum);
         await writeProvider.send("eth_requestAccounts", []);
         signer = writeProvider.getSigner();
         account = await signer.getAddress();
         log(`Wallet connected: ${shortAddr(account)}`);
 
-        // Check network
         const network = await writeProvider.getNetwork();
         if (network.chainId !== 8453) {
           log("Wrong network, switching to Base...");
@@ -430,43 +538,34 @@
           }
         }
 
-        // Setup contracts
         readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
         writeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
         log("Contracts initialized");
 
-        // Load contacts
         loadContacts();
 
-        // Add self to contacts
         if (!contacts[account.toLowerCase()]) {
           contacts[account.toLowerCase()] = "Me";
           saveContacts();
         }
 
-        // Set defaults
         selectedPayer = account.toLowerCase();
-        selectedSplitters = [account.toLowerCase()]; // By default, include yourself
+        selectedSplitters = [account.toLowerCase()];
 
-        // Update UI
         document.getElementById("connectCard").classList.add("hidden");
         document.getElementById("walletCard").classList.remove("hidden");
         document.getElementById("expenseCard").classList.remove("hidden");
         document.getElementById("balancesCard").classList.remove("hidden");
         document.getElementById("contactsCard").classList.remove("hidden");
 
-        // Get USDC balance
         const usdcBal = await usdcContract.balanceOf(account);
         document.getElementById("walletInfo").innerHTML = `
           <p><strong>Address:</strong> ${shortAddr(account)}</p>
           <p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>
         `;
 
-        // Render UI
         renderAll();
-
-        // Load balances
         await refreshBalances();
 
         log("✅ Ready! Add contacts and record expenses.");
@@ -499,7 +598,6 @@
         return;
       }
 
-      // The PARTICIPANTS array for the contract = people who OWE money = splitters MINUS the payer
       const participants = selectedSplitters.filter(addr => addr !== selectedPayer);
 
       if (participants.length === 0) {
@@ -531,12 +629,10 @@
 
         showStatus("expenseStatus", `✅ Expense recorded!`, "success");
 
-        // Clear form
         document.getElementById("expenseAmount").value = "";
         selectedSplitters = [account.toLowerCase()];
         renderAll();
 
-        // Add new participants to contacts
         for (const p of participants) {
           if (!contacts[p.toLowerCase()] || contacts[p.toLowerCase()] === shortAddr(p)) {
             const name = prompt(`Save ${shortAddr(p)} as contact:`, shortAddr(p));
@@ -546,7 +642,6 @@
           }
         }
 
-        // Wait and refresh
         log("Waiting 3s for blockchain state update...");
         await new Promise(r => setTimeout(r, 3000));
         await refreshBalances();
@@ -579,15 +674,12 @@
       for (const contactAddr of contactAddrs) {
         for (const category of CATEGORIES) {
           try {
-            await new Promise(r => setTimeout(r, 80)); // Rate limit protection
+            await new Promise(r => setTimeout(r, 80));
 
             const contactChecksum = ethers.utils.getAddress(contactAddr);
             const accountChecksum = ethers.utils.getAddress(account);
 
-            // They owe us: getBalance(debtor=contact, creditor=us)
             const theyOweUs = await readContract.getBalance(contactChecksum, accountChecksum, category);
-
-            // We owe them: getBalance(debtor=us, creditor=contact)
             const weOweThem = await readContract.getBalance(accountChecksum, contactChecksum, category);
 
             if (!theyOweUs.isZero()) {
@@ -648,7 +740,6 @@
       log(`Settling ${category} with ${name}...`);
 
       try {
-        // Check USDC allowance first
         const creditorChecksum = ethers.utils.getAddress(creditor);
         const balance = await readContract.getBalance(account, creditorChecksum, category);
         const allowance = await usdcContract.allowance(account, CONTRACT_ADDRESS);
@@ -668,7 +759,6 @@
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
 
-        // Update USDC balance display
         const usdcBal = await usdcContract.balanceOf(account);
         document.getElementById("walletInfo").innerHTML = `
           <p><strong>Address:</strong> ${shortAddr(account)}</p>
@@ -699,7 +789,6 @@
       }
     };
 
-    // Auto-connect if ethereum available
     window.onload = () => {
       if (window.ethereum) {
         log("MetaMask detected. Click Connect to start.");
