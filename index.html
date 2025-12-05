@@ -32,6 +32,7 @@
       border: 2px solid #e0e0e0;
       border-radius: 10px;
       font-size: 16px;
+      transition: border-color 0.2s ease;
     }
     input:focus, select:focus { outline: none; border-color: #667eea; }
     button {
@@ -62,6 +63,11 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+    .balance-card:hover {
+      border-color: #d1d5db;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
     .balance-amount { font-size: 20px; font-weight: 700; }
     .balance-amount.positive { color: #059669; }
@@ -78,7 +84,11 @@
       font-size: 14px;
       transition: all 0.2s;
     }
-    .contact-chip:hover { border-color: #667eea; background: #ede9fe; }
+    .contact-chip:hover { 
+      border-color: #667eea; 
+      background: #ede9fe;
+      transform: translateY(-1px);
+    }
     .contact-chip.selected { background: #667eea; color: white; border-color: #667eea; }
     .info-box {
       background: #fef3c7;
@@ -90,6 +100,124 @@
       margin-bottom: 16px;
     }
     .hidden { display: none; }
+
+    /* CONTACTS – improved UI/UX */
+    .contact-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .contact-item:hover {
+      border-color: #6366f1;
+      box-shadow: 0 6px 14px rgba(99, 102, 241, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .contact-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contact-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .contact-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .contact-address {
+      font-size: 12px;
+      color: #6b7280;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      margin-top: 3px;
+      word-break: break-all;
+    }
+
+    /* Actions appear on hover only */
+    .contact-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      transform: translateX(4px);
+      transition: all 0.2s ease;
+    }
+
+    .contact-item:hover .contact-actions {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Icon buttons (edit + delete) */
+    .icon-btn {
+      border: none;
+      background: #f3f4f6;
+      color: #4b5563;
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      background: #e5e7eb;
+      color: #111827;
+      transform: scale(1.05);
+    }
+
+    /* Softer delete (no aggressive red) */
+    .icon-btn.delete-btn {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .icon-btn.delete-btn:hover {
+      background: #fee2e2;
+      color: #7f1d1d;
+    }
+
+    /* Inline edit input */
+    .contact-edit-input {
+      border-radius: 999px;
+      border: 2px solid #d1d5db;
+      padding: 4px 10px;
+      font-size: 14px;
+      font-weight: 600;
+      width: 160px;
+      transition: all 0.2s ease;
+    }
+
+    .contact-edit-input:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Empty state */
+    .contacts-empty {
+      color: #6b7280;
+      font-size: 14px;
+      padding: 12px 0;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -234,19 +362,107 @@
     function renderContacts() {
       const list = document.getElementById("contactsList");
       list.innerHTML = "";
-      const otherContacts = Object.entries(contacts).filter(([addr]) => addr !== account?.toLowerCase());
-      otherContacts.forEach(([addr, name]) => {
-        const div = document.createElement("div");
-        div.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;";
-        div.innerHTML = `<span><strong>${name}</strong><br><small style="color:#888;">${shortAddr(addr)}</small></span><button onclick="deleteContact('${addr}')" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">✕</button>`;
-        list.appendChild(div);
-      });
+      const otherContacts = Object.entries(contacts).filter(
+        ([addr]) => addr !== account?.toLowerCase()
+      );
+
       if (otherContacts.length === 0) {
-        list.innerHTML = "<p style='color:#888;font-size:14px;'>No contacts yet. Add friends to split bills with!</p>";
+        list.innerHTML =
+          "<p class='contacts-empty'>No contacts yet. Add friends to split bills with!</p>";
+        return;
       }
+
+      otherContacts.forEach(([addr, name]) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "contact-item";
+
+        const info = document.createElement("div");
+        info.className = "contact-info";
+
+        const nameRow = document.createElement("div");
+        nameRow.className = "contact-name-row";
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "contact-name";
+        nameEl.textContent = name;
+
+        nameRow.appendChild(nameEl);
+
+        const addrEl = document.createElement("div");
+        addrEl.className = "contact-address";
+        addrEl.textContent = shortAddr(addr);
+
+        info.appendChild(nameRow);
+        info.appendChild(addrEl);
+
+        const actions = document.createElement("div");
+        actions.className = "contact-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "icon-btn";
+        editBtn.type = "button";
+        editBtn.title = "Edit name";
+        editBtn.innerHTML = "✏️";
+        editBtn.onclick = () => startEditContact(addr, nameEl);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "icon-btn delete-btn";
+        deleteBtn.type = "button";
+        deleteBtn.title = "Remove contact";
+        deleteBtn.innerHTML = "🗑";
+        deleteBtn.onclick = () => deleteContact(addr);
+
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
+        wrapper.appendChild(info);
+        wrapper.appendChild(actions);
+        list.appendChild(wrapper);
+      });
+    }
+
+    function startEditContact(addr, nameElement) {
+      const currentName = contacts[addr.toLowerCase()] || nameElement.textContent;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = currentName;
+      input.className = "contact-edit-input";
+
+      // Replace text span with input
+      const parent = nameElement.parentNode;
+      parent.replaceChild(input, nameElement);
+      input.focus();
+      input.select();
+
+      const finish = () => finishEditContact(addr, input, nameElement);
+
+      input.addEventListener("blur", finish);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") finish();
+        if (e.key === "Escape") {
+          input.value = currentName;
+          finish();
+        }
+      });
+    }
+
+    function finishEditContact(addr, input, nameElement) {
+      const newName = input.value.trim() || shortAddr(addr);
+      contacts[addr.toLowerCase()] = newName;
+      saveContacts();
+
+      nameElement.textContent = newName;
+      const parent = input.parentNode;
+      parent.replaceChild(nameElement, input);
     }
 
     function deleteContact(addr) {
+      const name = contacts[addr.toLowerCase()] || shortAddr(addr);
+      const confirmed = confirm(
+        `Remove ${name} from your contacts?\n\nThis does NOT affect any on-chain balances or debts.`
+      );
+      if (!confirmed) return;
+
       delete contacts[addr.toLowerCase()];
       saveContacts();
       renderAll();
