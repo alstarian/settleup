@@ -12,29 +12,94 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 20px;
+      padding-bottom: 60px;
     }
     .container { max-width: 500px; margin: 0 auto; }
+    
+    /* Sticky Header */
+    .app-header {
+      position: sticky;
+      top: -5px;
+      z-index: 100;
+      text-align: center;
+      padding: 15px 0;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .app-header h1 {
+      color: white;
+      font-size: 28px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
     .card {
       background: white;
       border-radius: 20px;
       padding: 24px;
       margin-bottom: 20px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      position: relative;
     }
-    h1 { text-align: center; color: white; margin-bottom: 20px; font-size: 28px; }
-    h2 { font-size: 18px; margin-bottom: 16px; color: #333; }
+    
+    h2 { 
+      font-size: 18px; 
+      margin-bottom: 16px; 
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Badge for pending items */
+    .badge {
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 6px;
+    }
+    
     .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 6px; text-transform: uppercase; }
-    .label-hint { font-size: 11px; color: #999; font-weight: normal; text-transform: none; }
+    label { 
+      display: block; 
+      font-size: 12px; 
+      font-weight: 600; 
+      color: #666; 
+      margin-bottom: 6px; 
+      text-transform: uppercase;
+    }
+    .label-hint { 
+      font-size: 11px; 
+      color: #999; 
+      font-weight: normal; 
+      text-transform: none; 
+    }
+    
     input, select {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       border: 2px solid #e0e0e0;
       border-radius: 10px;
       font-size: 16px;
-      transition: border-color 0.2s ease;
+      transition: all 0.2s ease;
     }
-    input:focus, select:focus { outline: none; border-color: #667eea; }
+    
+    /* Mobile-friendly touch targets */
+    @media (max-width: 640px) {
+      input, select, button {
+        min-height: 48px;
+        font-size: 16px;
+      }
+    }
+    
+    input:focus, select:focus { 
+      outline: none; 
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
     button {
       width: 100%;
       padding: 14px;
@@ -45,20 +110,109 @@
       cursor: pointer;
       margin-top: 10px;
       transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
     }
-    .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .btn-secondary { background: #f0f0f0; color: #333; }
-    .btn-secondary:hover { background: #e0e0e0; }
-    .btn-green { background: #10b981; color: white; }
-    .btn-green:hover { opacity: 0.9; }
-    .status { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; }
-    .status.success { background: #d1fae5; color: #065f46; }
-    .status.error { background: #fee2e2; color: #991b1b; }
-    .status.info { background: #dbeafe; color: #1e40af; }
+    
+    .btn-primary { 
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+      color: white; 
+    }
+    .btn-primary:hover { 
+      opacity: 0.9; 
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .btn-primary:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+      transform: none; 
+    }
+    
+    .btn-secondary { 
+      background: #f0f0f0; 
+      color: #333; 
+    }
+    .btn-secondary:hover { 
+      background: #e0e0e0; 
+    }
+    
+    .btn-green { 
+      background: #10b981; 
+      color: white; 
+    }
+    .btn-green:hover { 
+      opacity: 0.9;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .status { 
+      padding: 12px; 
+      border-radius: 8px; 
+      margin-top: 10px; 
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status.success { 
+      background: #d1fae5; 
+      color: #065f46; 
+    }
+    .status.error { 
+      background: #fee2e2; 
+      color: #991b1b; 
+    }
+    .status.info { 
+      background: #dbeafe; 
+      color: #1e40af; 
+    }
+    
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 400px;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .toast.success { border-left: 4px solid #10b981; }
+    .toast.error { border-left: 4px solid #ef4444; }
+    .toast.info { border-left: 4px solid #3b82f6; }
+    
     .balance-card {
-      background: #f9fafb;
+      background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
       border: 2px solid #e5e7eb;
       border-radius: 12px;
       padding: 16px;
@@ -67,15 +221,44 @@
     }
     .balance-card:hover {
       border-color: #d1d5db;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
     }
-    .balance-amount { font-size: 20px; font-weight: 700; }
+    
+    .balance-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .category-icon {
+      font-size: 24px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #f3f4f6;
+    }
+    
+    .balance-amount { 
+      font-size: 22px; 
+      font-weight: 700;
+      flex: 1;
+    }
     .balance-amount.positive { color: #059669; }
     .balance-amount.negative { color: #dc2626; }
-    .balance-details { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    .balance-details { 
+      font-size: 14px; 
+      color: #6b7280; 
+      margin-top: 4px; 
+    }
+    
     .contact-chip {
       display: inline-block;
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: #f3f4f6;
       border: 2px solid #e5e7eb;
       border-radius: 20px;
@@ -83,13 +266,22 @@
       cursor: pointer;
       font-size: 14px;
       transition: all 0.2s;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
     }
     .contact-chip:hover { 
       border-color: #667eea; 
       background: #ede9fe;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
     }
-    .contact-chip.selected { background: #667eea; color: white; border-color: #667eea; }
+    .contact-chip.selected { 
+      background: #667eea; 
+      color: white; 
+      border-color: #667eea; 
+    }
+    
     .info-box {
       background: #fef3c7;
       border: 2px solid #fcd34d;
@@ -99,7 +291,60 @@
       color: #92400e;
       margin-bottom: 16px;
     }
+    
     .hidden { display: none; }
+
+    /* Welcome Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: modalPop 0.3s ease;
+    }
+    
+    @keyframes modalPop {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    .modal h2 {
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: #111827;
+    }
+    
+    .modal-content {
+      color: #4b5563;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .modal-content ul {
+      margin: 12px 0;
+      padding-left: 20px;
+    }
+    
+    .modal-content li {
+      margin: 8px 0;
+    }
 
     /* CONTACTS – improved UI/UX */
     .contact-item {
@@ -167,20 +412,22 @@
       background: #f3f4f6;
       color: #4b5563;
       border-radius: 999px;
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
+      min-height: 36px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
+      margin: 0;
     }
 
     .icon-btn:hover {
       background: #e5e7eb;
       color: #111827;
-      transform: scale(1.05);
+      transform: scale(1.1);
     }
 
     /* Softer delete (no aggressive red) */
@@ -212,17 +459,122 @@
     }
 
     /* Empty state */
-    .contacts-empty {
-      color: #6b7280;
-      font-size: 14px;
-      padding: 12px 0;
+    .empty-state {
       text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+    
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+    
+    .empty-state-text {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    
+    /* Skeleton Loader */
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s ease-in-out infinite;
+      border-radius: 8px;
+      height: 20px;
+      margin: 8px 0;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #1f2937;
+      color: white;
+      text-align: center;
+      border-radius: 8px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+    }
+    
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Confetti for celebration */
+    @keyframes confetti-fall {
+      to { transform: translateY(100vh) rotate(360deg); }
+    }
+    
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: #667eea;
+      top: -10px;
+      animation: confetti-fall 3s linear;
+      z-index: 9999;
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+      body { padding: 10px; padding-bottom: 40px; }
+      .container { padding: 0; }
+      .card { padding: 20px; border-radius: 16px; }
+      .app-header h1 { font-size: 24px; }
+      .toast { right: 10px; bottom: 10px; max-width: calc(100vw - 20px); }
     }
   </style>
 </head>
 <body>
+  <!-- Welcome Modal -->
+  <div id="welcomeModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>👋 Welcome to SettleUp!</h2>
+      <div class="modal-content">
+        <p><strong>Split bills fairly with friends using USDC on Base blockchain.</strong></p>
+        <ul>
+          <li>💰 <strong>Add Expenses:</strong> Enter the total, select who paid, and who shared the bill</li>
+          <li>📊 <strong>Track Balances:</strong> See who owes what, organized by category</li>
+          <li>💳 <strong>Settle Up:</strong> Pay directly with USDC in one click</li>
+          <li>✏️ <strong>Adjust Anytime:</strong> Made a mistake? Edit balances easily</li>
+        </ul>
+        <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">Your data is stored locally. Transactions are secured on Base blockchain.</p>
+      </div>
+      <button class="btn-primary" onclick="closeWelcome()">Get Started</button>
+    </div>
+  </div>
+
   <div class="container">
-    <h1>💰 SettleUp</h1>
+    <div class="app-header">
+      <h1>💰 SettleUp</h1>
+    </div>
 
     <!-- Connect Wallet -->
     <div class="card" id="connectCard">
@@ -262,12 +614,18 @@
       </div>
       
       <div class="form-group">
-        <label>Who Paid? <span class="label-hint">(click one)</span></label>
+        <label>
+          Who Paid? 
+          <span class="label-hint">(click one)</span>
+        </label>
         <div id="payerChips"></div>
       </div>
       
       <div class="form-group">
-        <label>Who Shared the Bill? <span class="label-hint">(click all who participated, including payer)</span></label>
+        <label>
+          Who Shared the Bill? 
+          <span class="label-hint">(click all who participated, including payer)</span>
+        </label>
         <div id="participantChips"></div>
       </div>
       
@@ -279,7 +637,11 @@
 
     <!-- Balances -->
     <div class="card hidden" id="balancesCard">
-      <h2>💵 Balances <button class="btn-secondary" id="refreshBtn" style="width:auto;float:right;padding:8px 16px;margin:0;">🔄 Refresh</button></h2>
+      <h2>
+        💵 Balances
+        <span id="balanceBadge" class="badge hidden">0</span>
+        <button class="btn-secondary" id="refreshBtn" style="width:auto;margin-left:auto;padding:8px 16px;margin-top:0;">🔄 Refresh</button>
+      </h2>
       <div style="clear:both;"></div>
       <div id="balancesList" style="margin-top:16px;"></div>
     </div>
@@ -301,6 +663,14 @@
     const CONTRACT_ADDRESS = "0x87DE5D58F0d25Db2A7F3E8af264AFCd82e9e87dC";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"];
+    
+    const CATEGORY_ICONS = {
+      "Food": "🍕",
+      "Transport": "🚗",
+      "Entertainment": "🎬",
+      "Utilities": "💡",
+      "Other": "📦"
+    };
 
     // ========== CONTRACT ABI ==========
     const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"usdcAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"creditor","type":"address"},{"indexed":true,"internalType":"address","name":"debtor","type":"address"},{"indexed":false,"internalType":"uint256","name":"oldAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newAmount","type":"uint256"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"BalanceAdjusted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"payer","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"sharePerPerson","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"participants","type":"address[]"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"ExpenseAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"debtor","type":"address"},{"indexed":true,"internalType":"address","name":"creditor","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"string","name":"category","type":"string"}],"name":"Settled","type":"event"},{"inputs":[],"name":"MAX_BALANCE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_PARTICIPANTS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"address[]","name":"participants","type":"address[]"},{"internalType":"string","name":"category","type":"string"}],"name":"addExpense","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"uint256","name":"newAmount","type":"uint256"},{"internalType":"string","name":"category","type":"string"}],"name":"adjustBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"},{"internalType":"string","name":"","type":"string"}],"name":"balances","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"creditFrom","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"debtTo","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"debtor","type":"address"},{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"getBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getConstants","outputs":[{"internalType":"uint256","name":"maxBalance","type":"uint256"},{"internalType":"uint256","name":"maxParticipants","type":"uint256"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"creditor","type":"address"},{"internalType":"string","name":"category","type":"string"}],"name":"settle","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"usdc","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
@@ -322,13 +692,50 @@
     function showStatus(elementId, message, type) {
       const el = document.getElementById(elementId);
       el.className = `status ${type}`;
-      el.textContent = message;
+      el.innerHTML = `${type === 'info' ? '<span class="spinner"></span>' : ''}${message}`;
+    }
+    
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+      toast.innerHTML = `<span style="font-size:24px;">${icon}</span><span>${message}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+    
+    function triggerConfetti() {
+      for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+          const confetti = document.createElement('div');
+          confetti.className = 'confetti';
+          confetti.style.left = Math.random() * 100 + '%';
+          confetti.style.background = ['#667eea', '#764ba2', '#10b981', '#ef4444', '#f59e0b'][Math.floor(Math.random() * 5)];
+          confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+          document.body.appendChild(confetti);
+          setTimeout(() => confetti.remove(), 5000);
+        }, i * 30);
+      }
     }
 
     function getContactName(addr) {
       const normalized = addr.toLowerCase();
       if (normalized === account?.toLowerCase()) return "Me";
       return contacts[normalized] || shortAddr(addr);
+    }
+    
+    function closeWelcome() {
+      document.getElementById('welcomeModal').classList.add('hidden');
+      localStorage.setItem('settleup_welcome_seen', 'true');
+    }
+    
+    function showWelcomeIfNeeded() {
+      if (!localStorage.getItem('settleup_welcome_seen')) {
+        document.getElementById('welcomeModal').classList.remove('hidden');
+      }
     }
 
     // ========== CONTACTS ==========
@@ -346,17 +753,18 @@
 
     function addContact(addr, name) {
       if (!ethers.utils.isAddress(addr)) {
-        alert("Invalid address");
+        showToast("Invalid address", "error");
         return;
       }
       const normalized = addr.toLowerCase();
       if (normalized === account?.toLowerCase()) {
-        alert("You can't add yourself as a contact!");
+        showToast("You can't add yourself as a contact!", "error");
         return;
       }
       contacts[normalized] = name || shortAddr(addr);
       saveContacts();
       renderAll();
+      showToast(`Added ${name || shortAddr(addr)}`, "success");
     }
 
     function renderContacts() {
@@ -367,8 +775,13 @@
       );
 
       if (otherContacts.length === 0) {
-        list.innerHTML =
-          "<p class='contacts-empty'>No contacts yet. Add friends to split bills with!</p>";
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">👥</div>
+            <div class="empty-state-title">No contacts yet</div>
+            <div class="empty-state-text">Add friends to start splitting bills!</div>
+          </div>
+        `;
         return;
       }
 
@@ -428,7 +841,6 @@
       input.value = currentName;
       input.className = "contact-edit-input";
 
-      // Replace text span with input
       const parent = nameElement.parentNode;
       parent.replaceChild(input, nameElement);
       input.focus();
@@ -454,6 +866,8 @@
       nameElement.textContent = newName;
       const parent = input.parentNode;
       parent.replaceChild(nameElement, input);
+      
+      showToast(`Updated to ${newName}`, "success");
     }
 
     function deleteContact(addr) {
@@ -466,6 +880,7 @@
       delete contacts[addr.toLowerCase()];
       saveContacts();
       renderAll();
+      showToast(`Removed ${name}`, "info");
     }
 
     // ========== CHIPS ==========
@@ -556,6 +971,7 @@
     async function connectWallet() {
       if (!window.ethereum) {
         showStatus("connectStatus", "MetaMask not found!", "error");
+        showToast("Please install MetaMask", "error");
         return;
       }
       try {
@@ -596,6 +1012,7 @@
         document.getElementById("walletInfo").innerHTML = `<p><strong>Address:</strong> ${shortAddr(account)}</p><p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>`;
         renderAll();
         await refreshBalances();
+        showToast("Wallet connected successfully!", "success");
       } catch (e) {
         showStatus("connectStatus", e.message, "error");
       }
@@ -639,8 +1056,10 @@
       try {
         const tx = await contract.addExpense(amount, payerChecksum, participantsChecksum, category);
         showStatus("expenseStatus", "Waiting for confirmation...", "info");
+        showToast("Transaction sent! Waiting for confirmation...", "info");
         await tx.wait();
         showStatus("expenseStatus", `✅ Expense recorded!`, "success");
+        showToast(`Expense recorded successfully!`, "success");
         document.getElementById("expenseAmount").value = "";
         selectedSplitters = [account.toLowerCase()];
         renderAll();
@@ -654,6 +1073,7 @@
         await refreshBalances();
       } catch (e) {
         showStatus("expenseStatus", `Error: ${e.reason || e.message}`, "error");
+        showToast(`Transaction failed: ${e.reason || e.message}`, "error");
       } finally {
         btn.disabled = false;
       }
@@ -662,13 +1082,26 @@
     // ========== REFRESH BALANCES ==========
     async function refreshBalances() {
       const list = document.getElementById("balancesList");
-      list.innerHTML = "<p>Loading...</p>";
+      list.innerHTML = `
+        <div class="skeleton" style="height:60px;margin:8px 0;"></div>
+        <div class="skeleton" style="height:60px;margin:8px 0;"></div>
+        <div class="skeleton" style="height:60px;margin:8px 0;"></div>
+      `;
+      
       const balances = [];
       const contactAddrs = Object.keys(contacts).filter(a => a !== account.toLowerCase());
+      
       if (contactAddrs.length === 0) {
-        list.innerHTML = "<p style='color:#888;'>Add contacts to see balances with them.</p>";
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">💸</div>
+            <div class="empty-state-title">No contacts added</div>
+            <div class="empty-state-text">Add contacts to see balances with them</div>
+          </div>
+        `;
         return;
       }
+      
       for (const contactAddr of contactAddrs) {
         for (const category of CATEGORIES) {
           try {
@@ -688,20 +1121,55 @@
           }
         }
       }
+      
+      // Update badge
+      const badge = document.getElementById('balanceBadge');
+      if (balances.length > 0) {
+        badge.textContent = balances.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      
       if (balances.length === 0) {
-        list.innerHTML = "<p style='color:#888;'>✨ All settled up! No outstanding balances.</p>";
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">✨</div>
+            <div class="empty-state-title">All settled up!</div>
+            <div class="empty-state-text">No outstanding balances</div>
+          </div>
+        `;
+        triggerConfetti();
         return;
       }
+      
       list.innerHTML = "";
       for (const b of balances) {
         const contactName = getContactName(b.contact);
         const amountStr = parseFloat(ethers.utils.formatUnits(b.amount, 6)).toFixed(2);
         const card = document.createElement("div");
         card.className = "balance-card";
+        
+        const icon = CATEGORY_ICONS[b.category] || "📦";
+        
         if (b.type === "credit") {
-          card.innerHTML = `<div class="balance-amount positive">+ ${amountStr} USDC</div><div class="balance-details">${contactName} owes you • ${b.category}</div><button class="btn-secondary" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="adjustBalancePrompt('${b.contact}', '${b.category}', '${amountStr}')">✏️ Adjust</button>`;
+          card.innerHTML = `
+            <div class="balance-header">
+              <div class="category-icon">${icon}</div>
+              <div class="balance-amount positive">+${amountStr} USDC</div>
+            </div>
+            <div class="balance-details">${contactName} owes you • ${b.category}</div>
+            <button class="btn-secondary" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="adjustBalancePrompt('${b.contact}', '${b.category}', '${amountStr}')">✏️ Adjust</button>
+          `;
         } else {
-          card.innerHTML = `<div class="balance-amount negative">- ${amountStr} USDC</div><div class="balance-details">You owe ${contactName} • ${b.category}</div><button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="settleBalance('${b.contact}', '${b.category}')">💳 Pay Now</button>`;
+          card.innerHTML = `
+            <div class="balance-header">
+              <div class="category-icon">${icon}</div>
+              <div class="balance-amount negative">-${amountStr} USDC</div>
+            </div>
+            <div class="balance-details">You owe ${contactName} • ${b.category}</div>
+            <button class="btn-green" style="margin-top:10px;width:auto;padding:8px 16px;" onclick="settleBalance('${b.contact}', '${b.category}')">💳 Pay Now</button>
+          `;
         }
         list.appendChild(card);
       }
@@ -714,22 +1182,24 @@
       if (input === null) return;
       const value = parseFloat(input);
       if (isNaN(value) || value < 0) {
-        alert("Enter a non-negative number.");
+        showToast("Enter a non-negative number", "error");
         return;
       }
       if (value > 1000000) {
-        alert("Amount exceeds 1M USDC limit.");
+        showToast("Amount exceeds 1M USDC limit", "error");
         return;
       }
       try {
         const debtorChecksum = ethers.utils.getAddress(debtor);
         const newAmount = ethers.utils.parseUnits(value.toString(), 6);
+        showToast("Sending adjustment...", "info");
         const tx = await contract.adjustBalance(debtorChecksum, newAmount, category);
         await tx.wait();
+        showToast("Balance adjusted successfully!", "success");
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
       } catch (e) {
-        alert("Adjust failed: " + (e.reason || e.message));
+        showToast("Adjust failed: " + (e.reason || e.message), "error");
       }
     }
 
@@ -741,22 +1211,30 @@
         const creditorChecksum = ethers.utils.getAddress(creditor);
         const balance = await contract.getBalance(account, creditorChecksum, category);
         if (balance.isZero()) {
-          alert("No balance to settle!");
+          showToast("No balance to settle!", "error");
           return;
         }
+        
+        showToast("Checking USDC allowance...", "info");
         const allowance = await usdcContract.allowance(account, CONTRACT_ADDRESS);
         if (allowance.lt(balance)) {
+          showToast("Approving USDC...", "info");
           const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, balance);
           await approveTx.wait();
         }
+        
+        showToast("Settling payment...", "info");
         const tx = await contract.settle(creditorChecksum, category);
         await tx.wait();
+        
+        showToast("Payment settled successfully! 🎉", "success");
         await new Promise(r => setTimeout(r, 2000));
         await refreshBalances();
+        
         const usdcBal = await usdcContract.balanceOf(account);
         document.getElementById("walletInfo").innerHTML = `<p><strong>Address:</strong> ${shortAddr(account)}</p><p><strong>USDC Balance:</strong> ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC</p>`;
       } catch (e) {
-        alert("Settlement failed: " + (e.reason || e.message));
+        showToast("Settlement failed: " + (e.reason || e.message), "error");
       }
     }
 
@@ -773,9 +1251,12 @@
         document.getElementById("newContactAddr").value = "";
         document.getElementById("newContactName").value = "";
       } else {
-        alert("Enter an address");
+        showToast("Enter an address", "error");
       }
     };
+    
+    // Show welcome modal on first visit
+    window.addEventListener('load', showWelcomeIfNeeded);
   </script>
 </body>
 </html>
