@@ -292,7 +292,7 @@
       margin-bottom: 16px;
     }
     
-    .hidden { display: none; }
+    .hidden { display: none !important; }
 
     /* Welcome Modal */
     .modal-overlay {
@@ -567,7 +567,7 @@
         </ul>
         <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">Your data is stored locally. Transactions are secured on Base blockchain.</p>
       </div>
-      <button class="btn-primary" onclick="closeWelcome()">Get Started</button>
+      <button class="btn-primary" id="closeWelcomeBtn">Get Started</button>
     </div>
   </div>
 
@@ -727,14 +727,21 @@
       return contacts[normalized] || shortAddr(addr);
     }
     
+    // FIXED: Close welcome modal properly
     function closeWelcome() {
-      document.getElementById('welcomeModal').classList.add('hidden');
-      localStorage.setItem('settleup_welcome_seen', 'true');
+      const modal = document.getElementById('welcomeModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        localStorage.setItem('settleup_welcome_seen', 'true');
+      }
     }
     
     function showWelcomeIfNeeded() {
       if (!localStorage.getItem('settleup_welcome_seen')) {
-        document.getElementById('welcomeModal').classList.remove('hidden');
+        const modal = document.getElementById('welcomeModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+        }
       }
     }
 
@@ -1255,8 +1262,11 @@
       }
     };
     
+    // FIXED: Properly attach close button event
+    document.getElementById("closeWelcomeBtn").onclick = closeWelcome;
+    
     // Show welcome modal on first visit
-    window.addEventListener('load', showWelcomeIfNeeded);
+    window.addEventListener('DOMContentLoaded', showWelcomeIfNeeded);
   </script>
 </body>
 </html>
